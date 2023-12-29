@@ -472,8 +472,11 @@ class ABAW2_Preprocessing(object):
                         file = file.split("_left")[0]
                     else:
                         file = file[:-4]
+                        
+                    print("file : ", file)
 
                     found_video = [video for video in video_pool if (file + ".mp4" == video or file + ".avi" == video)]
+                    print("found_video : ", found_video)
 
                     assert len(found_video) == 1
 
