@@ -11,6 +11,9 @@ from PIL import Image
 from configs import config_preprocessing as config
 from base.utils import OpenFaceController, txt_row_count, standardize_facial_landmarks, save_pkl_file
 
+from warnings import filterwarnings
+filterwarnings('ignore')
+
 
 class ABAW2_Preprocessing(object):
     def __init__(self):
@@ -395,7 +398,7 @@ class ABAW2_Preprocessing(object):
                     )
 
                     if not os.path.isfile(output_path):
-                        subprocess.call(command)
+                        subprocess.call(command, shell=True)
 
                 if "egemaps" in self.aural_feature_list:
                     feature = "egemaps"
@@ -414,7 +417,7 @@ class ABAW2_Preprocessing(object):
                     )
 
                     if not os.path.isfile(output_path):
-                        subprocess.call(command)
+                        subprocess.call(command, shell=True)
 
                 if "vggish" in self.aural_feature_list:
                     # Requires tensorflow and GPU to run. One wav file at a time.
@@ -429,9 +432,9 @@ class ABAW2_Preprocessing(object):
                         video = cv2.VideoCapture(corresponding_video)
                         video_fps = video.get(cv2.CAP_PROP_FPS)
                         hop_sec = 1 / video_fps
-
+                        
                         vggish_feature = extract_vggish(wav_file=input_path, window_sec=0.96, hop_sec=hop_sec)
-
+                        
                         np.save(output_path, vggish_feature)
 
     def convert_video_to_wav(self):
@@ -473,10 +476,7 @@ class ABAW2_Preprocessing(object):
                     else:
                         file = file[:-4]
                         
-                    print("file : ", file)
-
                     found_video = [video for video in video_pool if (file + ".mp4" == video or file + ".avi" == video)]
-                    print("found_video : ", found_video)
 
                     assert len(found_video) == 1
 
@@ -502,17 +502,17 @@ class ABAW2_Preprocessing(object):
                     # exclude the extension
                     annotation_to_partition_dict[partition].append(file)
 
-        # For Test_Set:
-        cropped_aligned_image_folder_pool = os.listdir(self.image_path)
+        # # For Test_Set:
+        # cropped_aligned_image_folder_pool = os.listdir(self.image_path)
 
-        for partition, files in annotation_to_partition_dict.items():
-            for file in files:
-                if file[:-4] in cropped_aligned_image_folder_pool:
-                    cropped_aligned_image_folder_pool.remove(file[:-4])
-                else:
-                    raise ValueError("Duplication found!")
-        annotation_to_partition_dict['Test_Set'] = cropped_aligned_image_folder_pool
-        return annotation_to_partition_dict
+        # for partition, files in annotation_to_partition_dict.items():
+        #     for file in files:
+        #         if file[:-4] in cropped_aligned_image_folder_pool:
+        #             cropped_aligned_image_folder_pool.remove(file[:-4])
+        #         else:
+        #             raise ValueError("Duplication found!")
+        # annotation_to_partition_dict['Test_Set'] = cropped_aligned_image_folder_pool
+        # return annotation_to_partition_dict
 
 
 if __name__ == "__main__":
