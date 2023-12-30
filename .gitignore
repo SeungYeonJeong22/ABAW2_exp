@@ -7,3 +7,12 @@ save/
 *.log
 *.pth
 *.pbs
+*.wav
+*.jpg
+*.mp4
+*.avi
+OpenFace-OpenFace_2.2.0
+opensmile-3.0-linux-x64
+output
+*.zip
+*.tar.gz
