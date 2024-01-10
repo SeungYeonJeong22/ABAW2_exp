@@ -26,7 +26,7 @@ class ABAW2_VA_Arranger(object):
 
         trials_of_train_set = list(partition_dict['Train_Set'].keys())
         trials_of_original_validate_set = list(partition_dict['Validation_Set'].keys())
-        trials_of_putative_test_set = list(partition_dict['Target_Set'].keys())
+        # trials_of_putative_test_set = list(partition_dict['Target_Set'].keys())
 
         fold_0_trials = trials_of_train_set[slice(0, 70)]
         fold_1_trials = trials_of_train_set[slice(70, 140)]
@@ -54,7 +54,7 @@ class ABAW2_VA_Arranger(object):
                     partition = "Validation_Set"
                 new_partition_dict[partition].update({trial: partition_pool[trial]})
 
-        new_partition_dict['Target_Set'] = partition_dict['Target_Set']
+        # new_partition_dict['Target_Set'] = partition_dict['Target_Set']
         return new_partition_dict
 
     def resample_according_to_window_and_hop_length(self, fold):
@@ -168,7 +168,7 @@ class ABAW2_VA_Dataset(Dataset):
     @staticmethod
     def load_data(directory, indices, filename):
         filename = os.path.join(directory, filename)
-        frames = np.load(filename, mmap_mode='c')[indices]
+        frames = np.load(filename, allow_pickle=True)[indices]
         return frames
 
     def __getitem__(self, index):
@@ -213,7 +213,17 @@ class ABAW2_VA_Dataset(Dataset):
                 mfcc = np.zeros((self.window_length, 39), dtype=np.float32)
                 mfcc[indices] = self.load_data(path, indices, "mfcc.npy")
             else:
-                mfcc = self.load_data(path, indices, "mfcc.npy").astype(np.float32)
+                # mfcc = self.load_data(path, indices, "mfcc.npy").astype(np.float32)
+                try:
+                    mfcc = self.load_data(path, indices, "mfcc.npy").astype(np.float32)
+                except: 
+                    mfcc_data = self.load_data(path, indices, "mfcc.npy")
+                    for idx, i in enumerate(mfcc_data):
+                        for idx2, j in enumerate(i):
+                            if type(j) == str:
+                                mfcc_data[idx][idx2] = np.float32(j.replace("u",""))
+                            
+                    mfcc = mfcc_data.astype(np.float32)
             mfcc = self.mfcc_transforms(mfcc)
             features.update({'mfcc': mfcc})
 

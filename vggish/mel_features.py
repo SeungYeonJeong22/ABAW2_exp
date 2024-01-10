@@ -18,7 +18,7 @@
 import numpy as np
 
 
-def my_frame(data, window_length, hop_length):
+def my_frame(data, num_frames, window_length, hop_length):
     """Convert array into a sequence of successive possibly overlapping frames.
   An n-dimensional array of shape (num_samples, ...) is converted into an
   (n+1)-D array of shape (num_frames, window_length, ...), where each frame
@@ -34,8 +34,13 @@ def my_frame(data, window_length, hop_length):
     (N+1)-D np.array with as many rows as there are complete frames that can be
     extracted.
   """
-    num_samples = data.shape[0]
-    num_frames = 1 + int(np.floor((num_samples - window_length) / hop_length))
+    # num_samples = data.shape[0]
+    # num_frames = 1 + int(np.floor((num_samples - window_length) / hop_length))
+    # print("num_samples :", num_samples)
+    # print("window_length :", window_length)
+    # print("hop_length :", hop_length)
+    
+    print("num_frames :", num_frames)
     shape = (num_frames, window_length) + data.shape[1:]
 
     frame = []

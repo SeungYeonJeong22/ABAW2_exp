@@ -1,5 +1,6 @@
 import sys
 import argparse
+import os
 
 if __name__ == '__main__':
     frame_size = 48
@@ -17,13 +18,26 @@ if __name__ == '__main__':
                                                                                'e.g., on Google Colab or NSCC.')
 
     # 1.2. Paths
-    parser.add_argument('-dataset_path', default='/home/zhangsu/dataset/affwild2', type=str,
+    # parser.add_argument('-dataset_path', default='/home/zhangsu/dataset/affwild2', type=str,
+    #                     help='The root directory of the preprocessed dataset.')  # /scratch/users/ntu/su012/dataset/mahnob
+    # parser.add_argument('-model_load_path', default='/home/zhangsu/ABAW2-attention/load', type=str,
+    #                     help='The path to load the trained model, such as the backbone.')  # /scratch/users/ntu/su012/pretrained_model
+    # parser.add_argument('-model_save_path', default='/home/zhangsu/ABAW2-attention/save', type=str,
+    #                     help='The path to save the trained model ')  # /scratch/users/ntu/su012/trained_model
+    # parser.add_argument('-python_package_path', default='/home/zhangsu/ABAW2-attention', type=str,
+    #                     help='The path to the entire repository.')
+    
+    # parser.add_argument('-dataset_path', default='Affwild2_processed', type=str,
+    #                     help='The root directory of the preprocessed dataset.')  # /scratch/users/ntu/su012/dataset/mahnob
+    # parser.add_argument('-dataset_path', default="Affwild2_processed_ver2", type=str,
+    #                     help='The root directory of the preprocessed dataset.')  # /scratch/users/ntu/su012/dataset/mahnob
+    parser.add_argument('-dataset_path', default="Affwild2_processed_ver3", type=str,
                         help='The root directory of the preprocessed dataset.')  # /scratch/users/ntu/su012/dataset/mahnob
-    parser.add_argument('-model_load_path', default='/home/zhangsu/ABAW2-attention/load', type=str,
+    parser.add_argument('-model_load_path', default='load', type=str,
                         help='The path to load the trained model, such as the backbone.')  # /scratch/users/ntu/su012/pretrained_model
-    parser.add_argument('-model_save_path', default='/home/zhangsu/ABAW2-attention/save', type=str,
+    parser.add_argument('-model_save_path', default='save', type=str,
                         help='The path to save the trained model ')  # /scratch/users/ntu/su012/trained_model
-    parser.add_argument('-python_package_path', default='/home/zhangsu/ABAW2-attention', type=str,
+    parser.add_argument('-python_package_path', default='attention', type=str,
                         help='The path to the entire repository.')
 
     # 1.3. Experiment name, and stamp, will be used to name the output files.
@@ -47,9 +61,10 @@ if __name__ == '__main__':
     #   and Arousal.
     # If choose valence or arousal, the output dimension can be 1 for single-headed, or 2 for multi-headed.
     # For the latter, a weight will be applied to the output to favor the selected emotion.
-    parser.add_argument('-train_emotion', default="valence",
+    parser.add_argument('-train_emotion', default="both",
                         help='The emotion dimension to focus when updating gradient: arousal, valence, both')
-    parser.add_argument('-head', default="sh", help='Output 2 dimensions or 1? mh: multi-headed, sh: single-headed')
+    # parser.add_argument('-head', default="sh", help='Output 2 dimensions or 1? mh: multi-headed, sh: single-headed')
+    parser.add_argument('-head', default="mh", help='Output 2 dimensions or 1? mh: multi-headed, sh: single-headed')
 
     # 1.8. Whether to save the model?
     parser.add_argument('-save_model', default=1, type=int, help='Whether to save the model?')
@@ -126,6 +141,6 @@ if __name__ == '__main__':
         from test import Experiment
     else:
         from experiment_regular import Experiment
-
+        
     experiment_handler = Experiment(args)
     experiment_handler.experiment()

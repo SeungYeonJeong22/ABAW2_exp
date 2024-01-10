@@ -13,6 +13,8 @@ save/
 *.avi
 OpenFace-OpenFace_2.2.0
 opensmile-3.0-linux-x64
-output
+Affwild2_processed
+Affwild2_processed_ver2
+Affwild2_processed_ver3
 *.zip
 *.tar.gz

@@ -54,6 +54,9 @@ def waveform_to_examples(data, sample_rate, window_sec, hop_sec):
   # Resample to the rate assumed by VGGish.
   if sample_rate != vggish_params.SAMPLE_RATE:
     data = resampy.resample(data, sample_rate, vggish_params.SAMPLE_RATE)
+    
+  print("after resample data : ", data.shape)
+  print("window_sec, hop_sec : ", window_sec, hop_sec)
 
   # Compute log mel spectrogram features.
   log_mel = mel_features.log_mel_spectrogram(
@@ -65,6 +68,11 @@ def waveform_to_examples(data, sample_rate, window_sec, hop_sec):
       num_mel_bins=vggish_params.NUM_MEL_BINS,
       lower_edge_hertz=vggish_params.MEL_MIN_HZ,
       upper_edge_hertz=vggish_params.MEL_MAX_HZ)
+  
+  # x: frame size, y: Mel 주파수 영역의 여러 밴드
+  # 
+  
+  print("log_mel : ", log_mel.shape)
 
   # Frame features into examples.
   features_sample_rate = 1.0 / vggish_params.STFT_HOP_LENGTH_SECONDS
@@ -75,8 +83,18 @@ def waveform_to_examples(data, sample_rate, window_sec, hop_sec):
   #     hop_sec * features_sample_rate))
 
   example_hop_length = hop_sec * features_sample_rate
+  
+  num_samples = log_mel.shape[0]
+  num_frames = 1 + int(np.floor((num_samples - example_window_length) / example_hop_length))
+  
+  while num_frames > 5500:
+    hop_sec += 0.01
+    example_hop_length = hop_sec * features_sample_rate
+    num_frames = 1 + int(np.floor((num_samples - example_window_length) / example_hop_length))
+  
   log_mel_examples = mel_features.my_frame(
       log_mel,
+      num_frames,
       window_length=example_window_length,
       hop_length=example_hop_length)
   return log_mel_examples
@@ -92,7 +110,24 @@ def wavfile_to_examples(wav_file, window_sec, hop_sec):
   """
   wav_data, sr = wav_read(wav_file)
   assert wav_data.dtype == np.int16, 'Bad sample type: %r' % wav_data.dtype
+  
+  # 32768 == 16비트 wav파일에 대한 정규화 값 2^16 -1
   samples = wav_data / 32768.0  # Convert to [-1.0, +1.0]
+  # print("wav_data : ", wav_data)
+  # print("wav_data type : ", type(wav_data))
+  # print("wav_data length : ", len(wav_data))
+  
+  # # -1보다 작거나 1보다 큰 값을 확인
+  # out_of_range_samples = samples[(samples < -1.0) | (samples > 1.0)]
+
+  # # 결과 출력
+  # if len(out_of_range_samples) == 0:
+  #     print("모든 샘플 값이 올바른 범위에 있습니다.")
+  # else:
+  #     print(f"경고: {len(out_of_range_samples)} 개의 샘플이 올바른 범위를 벗어났습니다.")
+  #     print("최소값:", np.min(samples))
+  #     print("최대값:", np.max(samples))
+  #     print("올바른 범위를 벗어난 값들:", out_of_range_samples)
 
   samples = np.pad(samples, (0, sr), 'edge')
   return waveform_to_examples(samples, sr, window_sec, hop_sec)

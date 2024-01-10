@@ -10,6 +10,7 @@ import torch
 from torch import optim
 from torch.nn import MSELoss
 import torch.utils.data
+import torch.nn as nn
 
 from base.logger import ContinuousOutputHandlerNPYTrial, ContinuousMetricsCalculatorTrial, ConcordanceCorrelationCoefficient, PlotHandlerTrial
 
@@ -17,10 +18,11 @@ from base.logger import ContinuousOutputHandlerNPYTrial, ContinuousMetricsCalcul
 class ABAW2Trainer(object):
     def __init__(self, model, model_name='2d1d', save_path=None, train_emotion='both', head='multi-headed', factor=0.1,
                  early_stopping=100, criterion=None, milestone=[0], patience=10, learning_rate=0.00001, device='cpu', num_classes=2, max_epoch=50, min_learning_rate=1e-7,
-                 emotional_dimension=None, metrics=None, verbose=False, print_training_metric=False, save_plot=False, window_length=300,
+                 emotional_dimension=None, metrics=None, verbose=False, print_training_metric=False, save_plot=False, window_length=1,
                  load_best_at_each_epoch=False, fold=0, **kwargs):
 
         self.device = device
+        self.model = nn.DataParallel(model)
         self.model = model.to(device)
         self.model_name = model_name
         self.save_path = save_path

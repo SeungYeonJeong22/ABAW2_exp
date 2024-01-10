@@ -74,31 +74,31 @@ The database should structure like below.
 ```
 Affwild2 
 +---annotations
-¦       +---VA_Set
-¦       ¦        +---Train_Set
-¦       ¦        ¦   ¦    4-30-1920x1080.txt  
-¦       ¦        ¦   ¦    5-60-1920x1080-1.txt
-¦       ¦        ¦   ¦    ...
-¦       ¦        +---Validation_Set
-¦       ¦        ¦   ¦    1-30-1280x720.txt
-¦       ¦        ¦   ¦    8-30-1280x720.txt
-¦       ¦        ¦   ¦    ...
-¦   
+ï¿½       +-VA_Estimation_Challengeet
+ï¿½       ï¿½        +---Train_Set
+ï¿½       ï¿½        ï¿½   ï¿½    4-30-1920x1080.txt  
+ï¿½       ï¿½        ï¿½   ï¿½    5-60-1920x1080-1.txt
+ï¿½       ï¿½        ï¿½   ï¿½    ...
+ï¿½       ï¿½        +---Validation_Set
+ï¿½       ï¿½        ï¿½   ï¿½    1-30-1280x720.txt
+ï¿½       ï¿½        ï¿½   ï¿½    8-30-1280x720.txt
+ï¿½       ï¿½        ï¿½   ï¿½    ...
+ï¿½   
 +---cropped_aligned
-¦   ¦   1-30-1280x720
-¦   ¦   2-30-640x360
-¦   ¦   3-25-1920x1080
-¦   ¦   ...
+ï¿½   ï¿½   1-30-1280x720
+ï¿½   ï¿½   2-30-640x360
+ï¿½   ï¿½   3-25-1920x1080
+ï¿½   ï¿½   ...
 +---raw_video
-¦   ¦   1-30-1280x720.mp4
-¦   ¦   2-30-640x360.mp4
-¦   ¦   3-25-1920x1080.mp4
-¦   ¦   ...
+ï¿½   ï¿½   1-30-1280x720.mp4
+ï¿½   ï¿½   2-30-640x360.mp4
+ï¿½   ï¿½   3-25-1920x1080.mp4
+ï¿½   ï¿½   ...
 +---Test_Set
-¦   ¦   2-30-640x360.mp4
-¦   ¦   3-25-1920x1080.mp4
-¦   ¦   6-30-1920x1080.mp4
-¦   ¦   ...
+ï¿½   ï¿½   2-30-640x360.mp4
+ï¿½   ï¿½   3-25-1920x1080.mp4
+ï¿½   ï¿½   6-30-1920x1080.mp4
+ï¿½   ï¿½   ...
 ```
 
 In `configs.py`, please specify the settings according to your directory.
@@ -131,29 +131,29 @@ The last step for preprocessing is to generate the mean and standard deviation f
  
 ```
 Affwild2_processed
-¦   dataset_info.pkl
-¦   mean_std_dict.pkl
-¦
+ï¿½   dataset_info.pkl
+ï¿½   mean_std_dict.pkl
+ï¿½
 +---npy_data
-¦   +--- 1-30-1280x720
-¦   ¦    ¦    frame.npy
-¦   ¦    ¦    mfcc.npy
-¦   ¦    ¦    vggish.npy
-¦   ¦    ¦    continuous_label.npy
-¦   ¦    ¦    ...
-¦   +--- 2-30-640x360
-¦   ¦    ¦    frame.npy
-¦   ¦    ¦    mfcc.npy
-¦   ¦    ¦    vggish.npy
-¦   ¦    ¦    continuous_label.npy
-¦   ¦    ¦    ...
-¦   +--- 3-25-1920x1080
-¦   ¦    ¦    frame.npy
-¦   ¦    ¦    mfcc.npy
-¦   ¦    ¦    vggish.npy
-¦   ¦    ¦    continuous_label.npy
-¦   ¦    ¦    ...
-¦   +--- ...
+ï¿½   +--- 1-30-1280x720
+ï¿½   ï¿½    ï¿½    frame.npy
+ï¿½   ï¿½    ï¿½    mfcc.npy
+ï¿½   ï¿½    ï¿½    vggish.npy
+ï¿½   ï¿½    ï¿½    continuous_label.npy
+ï¿½   ï¿½    ï¿½    ...
+ï¿½   +--- 2-30-640x360
+ï¿½   ï¿½    ï¿½    frame.npy
+ï¿½   ï¿½    ï¿½    mfcc.npy
+ï¿½   ï¿½    ï¿½    vggish.npy
+ï¿½   ï¿½    ï¿½    continuous_label.npy
+ï¿½   ï¿½    ï¿½    ...
+ï¿½   +--- 3-25-1920x1080
+ï¿½   ï¿½    ï¿½    frame.npy
+ï¿½   ï¿½    ï¿½    mfcc.npy
+ï¿½   ï¿½    ï¿½    vggish.npy
+ï¿½   ï¿½    ï¿½    continuous_label.npy
+ï¿½   ï¿½    ï¿½    ...
+ï¿½   +--- ...
 ```
 
 

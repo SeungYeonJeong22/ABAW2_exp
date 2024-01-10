@@ -141,11 +141,24 @@ class Experiment(object):
         for fold in iter(self.folds_to_run):
 
             save_path = os.path.join(self.model_save_path, self.model_name, str(fold))
-            os.makedirs(save_path, exist_ok=True)
+            
+            if os.path.exists(save_path+"/0"):
+                dirs_list = os.listdir(save_path)
 
+                sorted_dirs = sorted(dirs_list, key=lambda x: int(''.join(filter(str.isdigit, x))))
+
+                ver_num = int(sorted_dirs[-1]) + 1
+                
+                save_path = os.path.join(save_path,f"{ver_num}")
+                os.makedirs(save_path)
+            else:
+                save_path = os.path.join(save_path,"0")
+                os.makedirs(save_path)
+                
             checkpoint_filename = os.path.join(save_path, "checkpoint.pkl")
 
             model = self.init_model()
+            model = nn.DataParallel(model)
 
             dataloader_dict = self.init_dataloader(fold)
 
