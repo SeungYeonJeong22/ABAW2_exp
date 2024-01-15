@@ -105,10 +105,12 @@ class Experiment(object):
 
         self.save_plot = args.save_plot
         self.device = self.init_device()
+        
+        self.optim = args.optim
 
         self.model_name = self.experiment_name + "_" + args.model_name + "_" + self.modality[
             0] + "_" + self.train_emotion + "_" + args.head + "_bs_" + str(self.batch_size) + "_lr_" + str(
-            self.learning_rate) + "_mlr_" + str(self.min_learning_rate) + "_" + self.stamp
+            self.learning_rate) + "_mlr_" + str(self.min_learning_rate) + "_" + self.optim + '_' + self.stamp
 
     def init_dataloader(self, fold):
         self.init_random_seed()
@@ -170,7 +172,7 @@ class Experiment(object):
                                    emotional_dimension=self.emotion_dimension, head=self.head, max_epoch=self.num_epochs,
                                    load_best_at_each_epoch=self.load_best_at_each_epoch, window_length=self.window_length,
                                    milestone=self.milestone, criterion=criterion, verbose=True, save_plot=self.save_plot,
-                                   fold=fold, device=self.device)
+                                   fold=fold, optim=self.optim, device=self.device)
 
             parameter_controller = ParamControl(trainer, gradual_release=self.gradual_release,
                                                 release_count=self.release_count, backbone_mode=self.backbone_mode)

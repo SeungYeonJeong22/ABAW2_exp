@@ -87,10 +87,14 @@ def waveform_to_examples(data, sample_rate, window_sec, hop_sec):
   num_samples = log_mel.shape[0]
   num_frames = 1 + int(np.floor((num_samples - example_window_length) / example_hop_length))
   
-  while num_frames > 5500:
+  while num_frames > 5400:
     hop_sec += 0.01
     example_hop_length = hop_sec * features_sample_rate
     num_frames = 1 + int(np.floor((num_samples - example_window_length) / example_hop_length))
+    
+  print("===========================================================")
+  print("num_frames : ", num_frames)
+  print("after hop_sec : ", hop_sec)
   
   log_mel_examples = mel_features.my_frame(
       log_mel,

@@ -57,8 +57,12 @@ class Checkpointer(object):
         row_df.T.to_csv(self.trainer.csv_filename, mode='a', index=False, header=False)
 
     def init_csv_logger(self, args, config):
+        from datetime import datetime
 
-        self.trainer.csv_filename = os.path.join(self.trainer.save_path, "training_logs.csv")
+        now = datetime.now()
+        now_date = now.strftime('%Y%m%d_%H%M%S')
+
+        self.trainer.csv_filename = os.path.join(self.trainer.save_path, f"{now_date}_training_logs.csv")
 
         # Record the arguments.
         arguments_dict = vars(args)

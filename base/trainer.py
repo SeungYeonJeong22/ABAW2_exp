@@ -19,7 +19,7 @@ class ABAW2Trainer(object):
     def __init__(self, model, model_name='2d1d', save_path=None, train_emotion='both', head='multi-headed', factor=0.1,
                  early_stopping=100, criterion=None, milestone=[0], patience=10, learning_rate=0.00001, device='cpu', num_classes=2, max_epoch=50, min_learning_rate=1e-7,
                  emotional_dimension=None, metrics=None, verbose=False, print_training_metric=False, save_plot=False, window_length=1,
-                 load_best_at_each_epoch=False, fold=0, **kwargs):
+                 load_best_at_each_epoch=False, fold=0, optimizer='Adam', **kwargs):
 
         self.device = device
         self.model = nn.DataParallel(model)
@@ -39,7 +39,9 @@ class ABAW2Trainer(object):
         self.patience = patience
         self.criterion = criterion
         self.factor = factor
+        self.optimizer = optimizer
         self.init_optimizer_and_scheduler()
+        
 
         self.verbose = verbose
 
@@ -87,10 +89,13 @@ class ABAW2Trainer(object):
 
     def init_optimizer_and_scheduler(self):
         if len(self.get_parameters()) != 0:
-            self.optimizer = optim.Adam(self.get_parameters(), lr=self.learning_rate, weight_decay=0.001)
+            if self.optimizer == "Adam":
+                self.optimizer = optim.Adam(self.get_parameters(), lr=self.learning_rate, weight_decay=0.001)
+            else:
+                self.optimizer = optim.SGD(self.get_parameters(), lr=self.learning_rate, weight_decay=0.001)
             self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='max', patience=self.patience,
                                                                         factor=self.factor)
-
+            
     def get_parameters(self):
         r"""
         Get the parameters to update.
@@ -170,6 +175,22 @@ class ABAW2Trainer(object):
             time_epoch_start = time.time()
 
             print("There are {} layers to update.".format(len(self.optimizer.param_groups[0]['params'])))
+            
+            
+            print("--------------------BEFORE TRAIN DATA--------------------")
+            # print("data_to_load['train'] : ", next(iter(data_to_load['train'])))
+            
+            # 데이터를 텍스트 파일로 저장
+            with open(f"./dataloader_data/{epoch}.txt", "w") as f:
+                for item in next(iter(data_to_load['train'])):
+                    if isinstance(item, torch.Tensor):
+                        # 텐서를 NumPy 배열로 변환한 후 리스트로 변환
+                        item = item.detach().cpu().numpy().tolist()
+                    elif isinstance(item, list):
+                        # 리스트 내부의 텐서들을 NumPy 배열로 변환한 후 리스트로 변환
+                        item = [tensor.detach().cpu().numpy().tolist() if isinstance(tensor, torch.Tensor) else tensor for tensor in item]
+                    f.write(str(item) + "\n")
+            print("---------------------------------------------------------")
 
             # Get the losses and the record dictionaries for training and validation.
             train_loss, train_record_dict = self.train(data_to_load['train'], epoch)
