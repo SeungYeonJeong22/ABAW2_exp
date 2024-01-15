@@ -8,7 +8,11 @@ Please cite [our paper](https://arxiv.org/abs/2107.01175).
       eprint={2107.01175},
       archivePrefix={arXiv},
       primaryClass={cs.CV}
+<<<<<<< HEAD
+} 
+=======
 }
+>>>>>>> 9d09cb25b02d65fe6f3b0d76793e1e389fe4e28d
 ```
 
 # Table of contents <a name="Table_of_Content"></a>
