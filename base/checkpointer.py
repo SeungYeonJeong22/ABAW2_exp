@@ -99,6 +99,7 @@ class Checkpointer(object):
         if os.path.isfile(self.path):
             print("Loading checkpoint. Are you sure it is intended?")
             self.checkpoint = {**self.checkpoint, **load_single_pkl(self.path)}
+            self.checkpoint = {**self.checkpoint_load_path, **load_single_pkl(self.path)}
             print("Checkpoint loaded!")
 
             self.trainer = self.checkpoint['trainer']

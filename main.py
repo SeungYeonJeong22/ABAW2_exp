@@ -122,11 +122,11 @@ if __name__ == '__main__':
     parser.add_argument('-gradual_release', default=1, type=int, help='Whether to gradually release some layers?')
     parser.add_argument('-release_count', default=3, type=int, help='How many layer groups to release?')
     parser.add_argument('-milestone', default=[0], nargs="+", type=int, help='The specific epochs to do something.')
-    parser.add_argument('-load_best_at_each_epoch', default=1, type=int,
+    parser.add_argument('-load_best_at_each_epoch', 
+                        default="save/ABAW2_2d1d_frame_both_mh_bs_8_lr_0.001_mlr_1e-06_Adam_test/4", type=str,
                         help='Whether to load the best model state at the end of each epoch?')
     
-    parser.add_argument('-optim', default="Adam", type=str,
-                        help='Choose Optimizer?')
+    parser.add_argument('-optim', default="Adam", type=str, help='Choose Optimizer?')
 
     # 3.2. Groundtruth settings
     parser.add_argument('-time_delay', default=0, type=float,

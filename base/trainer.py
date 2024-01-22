@@ -20,7 +20,7 @@ class ABAW2Trainer(object):
                  early_stopping=100, criterion=None, milestone=[0], patience=10, learning_rate=0.00001, device='cpu', num_classes=2, max_epoch=50, min_learning_rate=1e-7,
                  emotional_dimension=None, metrics=None, verbose=False, print_training_metric=False, save_plot=False, window_length=1,
                  load_best_at_each_epoch=False, fold=0, optimizer='Adam', **kwargs):
-
+        
         self.device = device
         self.model = nn.DataParallel(model)
         self.model = model.to(device)
@@ -39,10 +39,12 @@ class ABAW2Trainer(object):
         self.patience = patience
         self.criterion = criterion
         self.factor = factor
-        self.optimizer = optimizer
+        self.param_optimizer = optimizer
+        self.optimizer = None
         self.init_optimizer_and_scheduler()
         
-
+        print("Optimzer: ", self.optimizer)
+        
         self.verbose = verbose
 
         self.device = device
@@ -68,9 +70,9 @@ class ABAW2Trainer(object):
         # The networks.
         self.save_path = save_path
         os.makedirs(self.save_path, exist_ok=True)
-        self.model = model.to(device)
+        # self.model = model.to(device)
 
-        self.init_optimizer_and_scheduler()
+        # self.init_optimizer_and_scheduler()
 
         # parameter_control
         self.milestone = milestone
@@ -86,10 +88,10 @@ class ABAW2Trainer(object):
         self.csv_filename = None
         self.best_epoch_info = None
         self.load_best_at_each_epoch = load_best_at_each_epoch
-
+        
     def init_optimizer_and_scheduler(self):
         if len(self.get_parameters()) != 0:
-            if self.optimizer == "Adam":
+            if self.param_optimizer == "Adam":
                 self.optimizer = optim.Adam(self.get_parameters(), lr=self.learning_rate, weight_decay=0.001)
             else:
                 self.optimizer = optim.SGD(self.get_parameters(), lr=self.learning_rate, weight_decay=0.001)
@@ -180,8 +182,12 @@ class ABAW2Trainer(object):
             print("--------------------BEFORE TRAIN DATA--------------------")
             # print("data_to_load['train'] : ", next(iter(data_to_load['train'])))
             
+            if not os.path.exists(f"./dataloader_data/{self.save_path}/"):
+                os.makedirs(f"./dataloader_data/{self.save_path}/",  exist_ok=True)
+            
+            
             # 데이터를 텍스트 파일로 저장
-            with open(f"./dataloader_data/{epoch}.txt", "w") as f:
+            with open(f"./dataloader_data/{self.save_path}/{epoch}.txt", "w") as f:
                 for item in next(iter(data_to_load['train'])):
                     if isinstance(item, torch.Tensor):
                         # 텐서를 NumPy 배열로 변환한 후 리스트로 변환
@@ -278,8 +284,13 @@ class ABAW2Trainer(object):
             self.scheduler.step(validate_ccc)
             self.start_epoch = epoch + 1
 
+
+            print("self.load_best_at_each_epoch : ", self.load_best_at_each_epoch)
             if self.load_best_at_each_epoch:
-                self.model.load_state_dict(self.best_epoch_info['model_weights'])
+                checkpoint = torch.load(self.load_best_at_each_epoch + "/0" + "/checkpoint.pkl")
+                # self.model.load_state_dict(self.best_epoch_info['model_weights'])
+                self.model.load_state_dict(checkpoint['model_weights'])
+                print("self.model.load_state_dict(checkpoint['model_weights']) :", self.model.load_state_dict(checkpoint['model_weights']))
 
             checkpoint_controller.save_checkpoint(self, parameter_controller, self.save_path)
 
@@ -341,7 +352,8 @@ class ABAW2Trainer(object):
                         raise ValueError("Unknown emotion dimention to train!")
 
             if len(X.keys())>1:
-                outputs = self.model(inputs, inputs4, inputs3)
+                outputs = self.model(inputs3, inputs)
+                # outputs = self.model(inputs, inputs4, inputs3)
             else:
                 outputs = self.model(inputs)
 

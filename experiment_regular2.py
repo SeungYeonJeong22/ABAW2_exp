@@ -9,7 +9,6 @@ from torch import nn
 from base.utils import detect_device, select_gpu, set_cpu_thread
 from configs import config_processing as config
 from model.model import my_2d1d, my_2d1ddy
-from model.model2 import TwoStreamAuralVisualModel
 from base.dataset import ABAW2_VA_Arranger, ABAW2_VA_Dataset
 from base.checkpointer import Checkpointer
 from base.parameter_control import ParamControl
@@ -200,17 +199,16 @@ class Experiment(object):
 
         if "2d1d" in self.model_name:
             if len(self.modality) > 1:
-                model = TwoStreamAuralVisualModel(num_channels=4)
-                # model = my_2d1ddy(backbone_state_dict=self.backbone_state_dict, backbone_mode=self.backbone_mode,
-                #                 embedding_dim=self.cnn1d_embedding_dim, channels=self.cnn1d_channels, modality=self.modality,
-                #                 output_dim=output_dim, kernel_size=self.cnn1d_kernel_size, attention=self.cnn1d_attention,
-                #                 dropout=self.cnn1d_dropout, root_dir=self.model_load_path)
+                model = my_2d1ddy(backbone_state_dict=self.backbone_state_dict, backbone_mode=self.backbone_mode,
+                                embedding_dim=self.cnn1d_embedding_dim, channels=self.cnn1d_channels, modality=self.modality,
+                                output_dim=output_dim, kernel_size=self.cnn1d_kernel_size, attention=self.cnn1d_attention,
+                                dropout=self.cnn1d_dropout, root_dir=self.model_load_path)
             else:
                 model = my_2d1d(backbone_state_dict=self.backbone_state_dict, backbone_mode=self.backbone_mode,
                                 embedding_dim=self.cnn1d_embedding_dim, channels=self.cnn1d_channels, modality=self.modality,
                                 output_dim=output_dim, kernel_size=self.cnn1d_kernel_size, attention=self.cnn1d_attention,
                                 dropout=self.cnn1d_dropout, root_dir=self.model_load_path)
-            # model.init()
+            model.init()
         else:
             raise ValueError("Unknown base_model!")
 
