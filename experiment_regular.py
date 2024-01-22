@@ -178,7 +178,7 @@ class Experiment(object):
             parameter_controller = ParamControl(trainer, gradual_release=self.gradual_release,
                                                 release_count=self.release_count, backbone_mode=self.backbone_mode)
 
-            checkpoint_controller = Checkpointer(checkpoint_filename, trainer, parameter_controller, checkpoint_load_path, resume=self.resume)
+            checkpoint_controller = Checkpointer(checkpoint_filename, trainer, parameter_controller, resume=self.resume)
 
             if self.resume:
                 trainer, parameter_controller = checkpoint_controller.load_checkpoint()
