@@ -5,16 +5,23 @@ import torch
 import torch.backends.cudnn
 import torch.cuda
 from torch import nn
+from torch.utils.data.distributed import DistributedSampler
 
+# ABAW2
 from base.utils import detect_device, select_gpu, set_cpu_thread
 from configs import config_processing as config
 from model.model import my_2d1d, my_2d1ddy
-from model.model2 import TwoStreamAuralVisualModel
+from model.model2 import TwoStreamAuralVisualModel, CAM
 from base.dataset import ABAW2_VA_Arranger, ABAW2_VA_Dataset
 from base.checkpointer import Checkpointer
 from base.parameter_control import ParamControl
 from base.trainer import ABAW2Trainer
 import os
+
+
+#JCA
+from base.dataset_model2 import JCA_VA_Arranger, JCA_VA_Dataset
+
 
 
 class CCCLoss(nn.Module):
@@ -48,6 +55,8 @@ class Experiment(object):
         self.resume = args.resume
         self.debug = args.debug
         self.config = config
+        
+        print("self.experiment_name : " ,self.experiment_name) 
 
         self.gpu = args.gpu
         self.cpu = args.cpu
@@ -108,33 +117,75 @@ class Experiment(object):
         self.device = self.init_device()
         
         self.optim = args.optim
+        
+        if "jca" in self.experiment_name:
+            ## JCA
+            self.root="../data/Affwild2/resized_cropped_aligned_images_224_224"
+            self.fileList="../data/Affwild2/annotations/preprocessed_VA_annotations/Train_Set/"
+            self.audList="../data/Affwild2/wav/"
+            self.length=self.args.seq_length
+            self.flag=self.args.flag
+            self.stride=self.args.stride 
+            self.dilation = self.args.dilation
+            self.subseq_length = self.args.subseq_length        
+        
+            self.fusion_model = CAM().cuda()
 
         self.model_name = self.experiment_name + "_" + args.model_name + "_" + self.modality[
             0] + "_" + self.train_emotion + "_" + args.head + "_bs_" + str(self.batch_size) + "_lr_" + str(
             self.learning_rate) + "_mlr_" + str(self.min_learning_rate) + "_" + self.optim + '_' + self.stamp
 
+
     def init_dataloader(self, fold):
         self.init_random_seed()
-        arranger = ABAW2_VA_Arranger(self.dataset_path, window_length=self.window_length, hop_length=self.hop_length,
-                                     debug=self.debug)
+        
+        if self.experiment_name in "ABAW2":
+            arranger = ABAW2_VA_Arranger(self.dataset_path, window_length=self.window_length, hop_length=self.hop_length,
+                                        debug=self.debug)
 
-        # For fold = 0, it is the original partition.
-        data_dict = arranger.resample_according_to_window_and_hop_length(fold)
-        random.shuffle(data_dict['Train_Set'])
-        train_dataset = ABAW2_VA_Dataset(data_dict['Train_Set'], time_delay=self.time_delay, emotion=self.train_emotion,
-                                         head=self.head, modality=self.modality,
-                                         mode='train', fold=fold, mean_std_info=arranger.mean_std_info)
-        self.init_random_seed()
-        train_loader = torch.utils.data.DataLoader(
-            dataset=train_dataset, batch_size=self.batch_size, shuffle=False)
+            # For fold = 0, it is the original partition.
+            data_dict = arranger.resample_according_to_window_and_hop_length(fold)
+            random.shuffle(data_dict['Train_Set'])
+            train_dataset = ABAW2_VA_Dataset(data_dict['Train_Set'], time_delay=self.time_delay, emotion=self.train_emotion,
+                                            head=self.head, modality=self.modality,
+                                            mode='train', fold=fold, mean_std_info=arranger.mean_std_info)
+            self.init_random_seed()
+            train_loader = torch.utils.data.DataLoader(
+                dataset=train_dataset, batch_size=self.batch_size, shuffle=False)
 
-        validate_dataset = ABAW2_VA_Dataset(data_dict['Validation_Set'], time_delay=self.time_delay,
-                                            emotion=self.train_emotion, modality=self.modality,
-                                            head=self.head, mode='validate', fold=fold, mean_std_info=arranger.mean_std_info)
-        validate_loader = torch.utils.data.DataLoader(
-            dataset=validate_dataset, batch_size=self.batch_size, shuffle=False)
+            validate_dataset = ABAW2_VA_Dataset(data_dict['Validation_Set'], time_delay=self.time_delay,
+                                                emotion=self.train_emotion, modality=self.modality,
+                                                head=self.head, mode='validate', fold=fold, mean_std_info=arranger.mean_std_info)
+            validate_loader = torch.utils.data.DataLoader(
+                dataset=validate_dataset, batch_size=self.batch_size, shuffle=False)
 
-        dataloader_dict = {'train': train_loader, 'validate': validate_loader}
+            dataloader_dict = {'train': train_loader, 'validate': validate_loader}
+            
+            
+        elif self.experiment_name in "jca":
+            
+            arranger = JCA_VA_Arranger(self.dataset_path, window_length=self.window_length, hop_length=self.hop_length,
+                                        debug=self.debug)
+
+            # For fold = 0, it is the original partition.
+            data_dict = arranger.resample_according_to_window_and_hop_length(fold)
+            random.shuffle(data_dict['Train_Set'])
+            train_dataset = JCA_VA_Dataset(data_dict['Train_Set'], time_delay=self.time_delay, emotion=self.train_emotion,
+                                            head=self.head, modality=self.modality,
+                                            mode='train', fold=fold, mean_std_info=arranger.mean_std_info)
+            self.init_random_seed()
+            
+            train_loader = torch.utils.data.DataLoader(
+                dataset=train_dataset, batch_size=self.batch_size, shuffle=False)
+
+            validate_dataset = JCA_VA_Dataset(data_dict['Validation_Set'], time_delay=self.time_delay,
+                                                emotion=self.train_emotion, modality=self.modality,
+                                                head=self.head, mode='validate', fold=fold, mean_std_info=arranger.mean_std_info)
+            validate_loader = torch.utils.data.DataLoader(
+                dataset=validate_dataset, batch_size=self.batch_size, shuffle=False)
+
+            dataloader_dict = {'train': train_loader, 'validate': validate_loader}       
+            
         return dataloader_dict
 
     def experiment(self):
@@ -144,6 +195,7 @@ class Experiment(object):
         for fold in iter(self.folds_to_run):
 
             save_path = os.path.join(self.model_save_path, self.model_name, str(fold))
+            self.load_best_at_each_epoch = str(self.load_best_at_each_epoch)
             checkpoint_load_path = self.load_best_at_each_epoch + "/0"
             
             if os.path.exists(save_path+"/0"):
@@ -165,15 +217,27 @@ class Experiment(object):
             model = nn.DataParallel(model)
 
             dataloader_dict = self.init_dataloader(fold)
-
-            trainer = ABAW2Trainer(model, model_name=self.model_name, learning_rate=self.learning_rate,
-                                   min_learning_rate=self.min_learning_rate,
-                                   metrics=self.metrics, save_path=save_path, early_stopping=self.early_stopping,
-                                   train_emotion=self.train_emotion, patience=self.patience, factor=self.factor,
-                                   emotional_dimension=self.emotion_dimension, head=self.head, max_epoch=self.num_epochs,
-                                   load_best_at_each_epoch=self.load_best_at_each_epoch, window_length=self.window_length,
-                                   milestone=self.milestone, criterion=criterion, verbose=True, save_plot=self.save_plot,
-                                   fold=fold, optimizer=self.optim, device=self.device)
+            
+            # 파라미터가 다름
+            if "jca" in self.args.experiment_name:
+                trainer = ABAW2Trainer(model, model_name=self.model_name, learning_rate=self.learning_rate, subseq_len = self.subseq_length,
+                                    min_learning_rate=self.min_learning_rate,
+                                    metrics=self.metrics, save_path=save_path, early_stopping=self.early_stopping,
+                                    train_emotion=self.train_emotion, patience=self.patience, factor=self.factor,
+                                    emotional_dimension=self.emotion_dimension, head=self.head, max_epoch=self.num_epochs,
+                                    load_best_at_each_epoch=self.load_best_at_each_epoch, window_length=self.window_length,
+                                    milestone=self.milestone, criterion=criterion, verbose=True, save_plot=self.save_plot,
+                                    fold=fold, optimizer=self.optim, cam=self.fusion_model, device=self.device)
+                
+            else:
+                trainer = ABAW2Trainer(model, model_name=self.model_name, learning_rate=self.learning_rate,
+                                    min_learning_rate=self.min_learning_rate,
+                                    metrics=self.metrics, save_path=save_path, early_stopping=self.early_stopping,
+                                    train_emotion=self.train_emotion, patience=self.patience, factor=self.factor,
+                                    emotional_dimension=self.emotion_dimension, head=self.head, max_epoch=self.num_epochs,
+                                    load_best_at_each_epoch=self.load_best_at_each_epoch, window_length=self.window_length,
+                                    milestone=self.milestone, criterion=criterion, verbose=True, save_plot=self.save_plot,
+                                    fold=fold, optimizer=self.optim, device=self.device)                
 
             parameter_controller = ParamControl(trainer, gradual_release=self.gradual_release,
                                                 release_count=self.release_count, backbone_mode=self.backbone_mode)
@@ -198,19 +262,30 @@ class Experiment(object):
         else:
             output_dim = 1
 
-        if "2d1d" in self.model_name:
+        if "2d1d" in self.model_name or "jca" in self.model_name:
             if len(self.modality) > 1:
-                model = TwoStreamAuralVisualModel(num_channels=4)
-                # model = my_2d1ddy(backbone_state_dict=self.backbone_state_dict, backbone_mode=self.backbone_mode,
-                #                 embedding_dim=self.cnn1d_embedding_dim, channels=self.cnn1d_channels, modality=self.modality,
-                #                 output_dim=output_dim, kernel_size=self.cnn1d_kernel_size, attention=self.cnn1d_attention,
-                #                 dropout=self.cnn1d_dropout, root_dir=self.model_load_path)
+                if "jca" in self.model_name:
+                    model = TwoStreamAuralVisualModel(num_channels=4)
+                else:
+                    model = my_2d1ddy(backbone_state_dict=self.backbone_state_dict, backbone_mode=self.backbone_mode,
+                                    embedding_dim=self.cnn1d_embedding_dim, channels=self.cnn1d_channels, modality=self.modality,
+                                    output_dim=output_dim, kernel_size=self.cnn1d_kernel_size, attention=self.cnn1d_attention,
+                                    dropout=self.cnn1d_dropout, root_dir=self.model_load_path)
+                    
+                    model.init()
             else:
                 model = my_2d1d(backbone_state_dict=self.backbone_state_dict, backbone_mode=self.backbone_mode,
                                 embedding_dim=self.cnn1d_embedding_dim, channels=self.cnn1d_channels, modality=self.modality,
                                 output_dim=output_dim, kernel_size=self.cnn1d_kernel_size, attention=self.cnn1d_attention,
                                 dropout=self.cnn1d_dropout, root_dir=self.model_load_path)
-            # model.init()
+                model.init()
+            
+            ## Freezing the model
+            if isinstance(model, TwoStreamAuralVisualModel):
+                for p in model.parameters():
+                    p.requires_grad = False
+                for p in model.children():
+                    p.train(False)            
         else:
             raise ValueError("Unknown base_model!")
 

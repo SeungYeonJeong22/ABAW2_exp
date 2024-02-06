@@ -220,7 +220,8 @@ class ABAW2_Preprocessing(object):
                 # For frame
                 npy_frame_path = os.path.join(npy_folder, "frame.npy")
                 frame_matrix = []
-                black = np.zeros((48, 48, 3), dtype=np.int8)
+                # black = np.zeros((48, 48, 3), dtype=np.int8)
+                black = np.zeros((224, 224, 3), dtype=np.int8)
                 if not os.path.isfile(npy_frame_path):
 
                     for i in range(trial_length):
@@ -228,7 +229,7 @@ class ABAW2_Preprocessing(object):
                         if self.labeled_frame_indices_of_each_video[partition][trial_name][i] == 1:
                             if os.path.isfile(current_frame_path):
                                 current_frame = Image.open(current_frame_path)
-                                current_frame = current_frame.resize((48, 48))
+                                current_frame = current_frame.resize((224, 224))
                                 frame_matrix.append(np.array(current_frame))
                             else:
                                 frame_matrix.append(black)
@@ -280,18 +281,18 @@ class ABAW2_Preprocessing(object):
                 #     au_matrix = np.stack(au_matrix)
                 #     np.save(npy_au_path, au_matrix)
 
-    def extract_visual_features(self):
+    # def extract_visual_features(self):
 
-        for partition, labels in self.annotation_to_partition_dict.items():
-            for label in tqdm(labels, total=len(labels)):
-                input_path = os.path.join(self.image_path, label[:-4])
-                output_path = os.path.join(self.output_path, "visual_features_openface_48")
-                os.makedirs(output_path, exist_ok=True)
+    #     for partition, labels in self.annotation_to_partition_dict.items():
+    #         for label in tqdm(labels, total=len(labels)):
+    #             input_path = os.path.join(self.image_path, label[:-4])
+    #             output_path = os.path.join(self.output_path, "visual_features_openface_48")
+    #             os.makedirs(output_path, exist_ok=True)
 
-                openface = OpenFaceController(openface_path=self.openface_config['openface_directory'],
-                                              output_directory=output_path)
-                _ = openface.process_video(
-                    input_filename=input_path, output_filename=label[:-4], **self.openface_config)
+    #             openface = OpenFaceController(openface_path=self.openface_config['openface_directory'],
+    #                                           output_directory=output_path)
+    #             _ = openface.process_video(
+    #                 input_filename=input_path, output_filename=label[:-4], **self.openface_config)
 
     def get_available_frame_indices(self):
         # available_frame_indices = {'Train_Set': {}, 'Validation_Set': {}, 'Test_Set': {}}

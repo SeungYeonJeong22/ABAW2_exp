@@ -8,6 +8,7 @@ from torchvision.transforms import transforms
 import numpy as np
 import random
 from operator import itemgetter
+import random
 
 
 class ABAW2_VA_Arranger(object):
@@ -19,48 +20,76 @@ class ABAW2_VA_Arranger(object):
         self.hop_length = hop_length
         self.debug = debug
 
-    @staticmethod
-    def generate_partition_dict_for_cross_validation(partition_dict, fold):
-        new_partition_dict = {'Train_Set': {}, 'Validation_Set': {}, 'Target_Set': {}}
-        partition_pool = {**partition_dict['Train_Set'], **partition_dict['Validation_Set']}
+    # @staticmethod
+    # def generate_partition_dict_for_cross_validation(partition_dict, fold):
+    #     new_partition_dict = {'Train_Set': {}, 'Validation_Set': {}, 'Target_Set': {}}
+    #     partition_pool = {**partition_dict['Train_Set'], **partition_dict['Validation_Set']}
 
+    #     trials_of_train_set = list(partition_dict['Train_Set'].keys())
+    #     trials_of_original_validate_set = list(partition_dict['Validation_Set'].keys())
+    #     # trials_of_putative_test_set = list(partition_dict['Target_Set'].keys())
+
+    #     fold_0_trials = trials_of_train_set[slice(0, 70)]
+    #     fold_1_trials = trials_of_train_set[slice(70, 140)]
+    #     fold_2_trials = trials_of_train_set[slice(140, 210)]
+    #     fold_3_trials = trials_of_train_set[slice(210, 280)]
+    #     fold_4_trials = trials_of_train_set[slice(280, 351)]
+    #     fold_5_trials = trials_of_original_validate_set
+
+    #     fold_n_trials = [
+    #         fold_0_trials,
+    #         fold_1_trials,
+    #         fold_2_trials,
+    #         fold_3_trials,
+    #         fold_4_trials,
+    #         fold_5_trials
+    #     ]
+
+    #     fold_index = np.roll(np.arange(len(fold_n_trials)), fold)
+    #     ordered_trials = list(itemgetter(*fold_index)(fold_n_trials))
+
+    #     for nth_fold, trials_of_a_fold in enumerate(ordered_trials):
+    #         for trial in trials_of_a_fold:
+    #             partition = "Train_Set"
+    #             if nth_fold == len(fold_n_trials) - 1:
+    #                 partition = "Validation_Set"
+    #             new_partition_dict[partition].update({trial: partition_pool[trial]})
+
+    #     return new_partition_dict
+    
+    @staticmethod
+    def generate_partition_dict_for_cross_validation2(partition_dict, fold=None):
+        new_partition_dict = {'Train_Set': {}, 'Validation_Set': {}}
+        
+        tmp_part_dict = partition_dict.copy()
+        tmp_part_dict['Train_Set'].update(partition_dict['Validation_Set'])
+        new_partition_all = tmp_part_dict['Train_Set']
+        
         trials_of_train_set = list(partition_dict['Train_Set'].keys())
         trials_of_original_validate_set = list(partition_dict['Validation_Set'].keys())
-        # trials_of_putative_test_set = list(partition_dict['Target_Set'].keys())
 
-        fold_0_trials = trials_of_train_set[slice(0, 70)]
-        fold_1_trials = trials_of_train_set[slice(70, 140)]
-        fold_2_trials = trials_of_train_set[slice(140, 210)]
-        fold_3_trials = trials_of_train_set[slice(210, 280)]
-        fold_4_trials = trials_of_train_set[slice(280, 351)]
-        fold_5_trials = trials_of_original_validate_set
+        trials_before_split = trials_of_train_set + trials_of_original_validate_set
 
-        fold_n_trials = [
-            fold_0_trials,
-            fold_1_trials,
-            fold_2_trials,
-            fold_3_trials,
-            fold_4_trials,
-            fold_5_trials
-        ]
-
-        fold_index = np.roll(np.arange(len(fold_n_trials)), fold)
-        ordered_trials = list(itemgetter(*fold_index)(fold_n_trials))
-
-        for nth_fold, trials_of_a_fold in enumerate(ordered_trials):
-            for trial in trials_of_a_fold:
-                partition = "Train_Set"
-                if nth_fold == len(fold_n_trials) - 1:
-                    partition = "Validation_Set"
-                new_partition_dict[partition].update({trial: partition_pool[trial]})
-
-        # new_partition_dict['Target_Set'] = partition_dict['Target_Set']
+        valid = random.sample(trials_before_split, int(len(trials_before_split) * 0.2))
+        train = [t for t in trials_before_split if not t in valid]
+        
+        for trial_train in train:
+            new_partition_dict["Train_Set"].update({trial_train:new_partition_all[trial_train]})
+            
+        for trial_valid in valid:
+            new_partition_dict["Validation_Set"].update({trial_valid:new_partition_all[trial_valid]})
+        
         return new_partition_dict
-
+        
     def resample_according_to_window_and_hop_length(self, fold):
         partition_dict = self.dataset_info['partition']
 
-        partition_dict = self.generate_partition_dict_for_cross_validation(partition_dict, fold)
+        # partition_dict = self.generate_partition_dict_for_cross_validation(partition_dict, fold)
+        # print("1", len(partition_dict['Train_Set']), len(partition_dict['Validation_Set']))
+        
+        partition_dict = self.generate_partition_dict_for_cross_validation2(partition_dict, fold)
+        # print("2", len(partition_dict['Train_Set']), len(partition_dict['Validation_Set']))
+
         sampled_list = {'Train_Set': [], 'Validation_Set': [], 'Target_Set': []}
 
         for partition, trials in partition_dict.items():
@@ -162,6 +191,8 @@ class ABAW2_VA_Dataset(Dataset):
                 transforms.Normalize(mean=self.mean_std_info["vggish"][self.fold][self.partition]['mean'],
                                      std=self.mean_std_info["vggish"][self.fold][self.partition]['std']),
             ])
+            
+        torch.cuda.empty_cache()
 
 
 
@@ -265,7 +296,7 @@ class ABAW2_VA_Dataset(Dataset):
             labels = np.concatenate(
                 (labels[self.time_delay:, :],
                  np.repeat(labels[-1, :][np.newaxis], repeats=self.time_delay, axis=0)), axis=0)
-
+            # print(labels.shape, indices)
         if len(indices) < self.window_length:
             indices = np.arange(self.window_length)
 
@@ -273,4 +304,6 @@ class ABAW2_VA_Dataset(Dataset):
 
     def __len__(self):
         return len(self.data_list)
+
+
 

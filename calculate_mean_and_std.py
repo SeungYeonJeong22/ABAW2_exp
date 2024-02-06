@@ -10,7 +10,8 @@ from experiment_regular import Experiment
 # dataset_path = "/home/zhangsu/dataset/affwild2"
 # dataset_path = "Affwild2_processed"
 # dataset_path = "Affwild2_processed_ver2"
-dataset_path = "Affwild2_processed_ver3"
+# dataset_path = "Affwild2_processed_ver3"
+dataset_path = "Affwild2_processed_model2"
 
 
 # No need to change the rest.
