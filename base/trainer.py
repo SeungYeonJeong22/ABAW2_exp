@@ -179,24 +179,24 @@ class ABAW2Trainer(object):
             print("There are {} layers to update.".format(len(self.optimizer.param_groups[0]['params'])))
             
             
-            print("--------------------BEFORE TRAIN DATA--------------------")
-            # print("data_to_load['train'] : ", next(iter(data_to_load['train'])))
+            # print("--------------------BEFORE TRAIN DATA--------------------")
+            # # print("data_to_load['train'] : ", next(iter(data_to_load['train'])))
             
-            if not os.path.exists(f"./dataloader_data/{self.save_path}/"):
-                os.makedirs(f"./dataloader_data/{self.save_path}/",  exist_ok=True)
+            # if not os.path.exists(f"./dataloader_data/{self.save_path}/"):
+            #     os.makedirs(f"./dataloader_data/{self.save_path}/",  exist_ok=True)
             
             
-            # 데이터를 텍스트 파일로 저장
-            with open(f"./dataloader_data/{self.save_path}/{epoch}.txt", "w") as f:
-                for item in next(iter(data_to_load['train'])):
-                    if isinstance(item, torch.Tensor):
-                        # 텐서를 NumPy 배열로 변환한 후 리스트로 변환
-                        item = item.detach().cpu().numpy().tolist()
-                    elif isinstance(item, list):
-                        # 리스트 내부의 텐서들을 NumPy 배열로 변환한 후 리스트로 변환
-                        item = [tensor.detach().cpu().numpy().tolist() if isinstance(tensor, torch.Tensor) else tensor for tensor in item]
-                    f.write(str(item) + "\n")
-            print("---------------------------------------------------------")
+            # # 데이터를 텍스트 파일로 저장
+            # with open(f"./dataloader_data/{self.save_path}/{epoch}.txt", "w") as f:
+            #     for item in next(iter(data_to_load['train'])):
+            #         if isinstance(item, torch.Tensor):
+            #             # 텐서를 NumPy 배열로 변환한 후 리스트로 변환
+            #             item = item.detach().cpu().numpy().tolist()
+            #         elif isinstance(item, list):
+            #             # 리스트 내부의 텐서들을 NumPy 배열로 변환한 후 리스트로 변환
+            #             item = [tensor.detach().cpu().numpy().tolist() if isinstance(tensor, torch.Tensor) else tensor for tensor in item]
+            #         f.write(str(item) + "\n")
+            # print("---------------------------------------------------------")
 
             # Get the losses and the record dictionaries for training and validation.
             train_loss, train_record_dict = self.train(data_to_load['train'], epoch)
