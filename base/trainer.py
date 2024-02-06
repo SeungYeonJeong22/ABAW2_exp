@@ -16,13 +16,14 @@ from base.logger import ContinuousOutputHandlerNPYTrial, ContinuousMetricsCalcul
 
 
 class ABAW2Trainer(object):
-    def __init__(self, model, model_name='2d1d', save_path=None, train_emotion='both', head='multi-headed', factor=0.1,
+    def __init__(self, model, model_name='2d1d', save_path=None, train_emotion='both', head='multi-headed', factor=0.1, subseq_len = 16,
                  early_stopping=100, criterion=None, milestone=[0], patience=10, learning_rate=0.00001, device='cpu', num_classes=2, max_epoch=50, min_learning_rate=1e-7,
                  emotional_dimension=None, metrics=None, verbose=False, print_training_metric=False, save_plot=False, window_length=1,
-                 load_best_at_each_epoch=False, fold=0, optimizer='Adam', **kwargs):
+                 load_best_at_each_epoch=False, fold=0, optimizer='Adam', cam=None, **kwargs):
         
+        self.args = kwargs
         self.device = device
-        self.model = nn.DataParallel(model)
+        # self.model = nn.DataParallel(model)
         self.model = model.to(device)
         self.model_name = model_name
         self.save_path = save_path
@@ -41,6 +42,8 @@ class ABAW2Trainer(object):
         self.factor = factor
         self.param_optimizer = optimizer
         self.optimizer = None
+        
+        
         self.init_optimizer_and_scheduler()
         
         print("Optimzer: ", self.optimizer)
@@ -88,6 +91,13 @@ class ABAW2Trainer(object):
         self.csv_filename = None
         self.best_epoch_info = None
         self.load_best_at_each_epoch = load_best_at_each_epoch
+        
+        
+        # JCA
+        if "jca" in self.model_name:
+            self.subseq_len = subseq_len
+            
+            self.fusion_model = cam
         
     def init_optimizer_and_scheduler(self):
         if len(self.get_parameters()) != 0:
@@ -179,24 +189,24 @@ class ABAW2Trainer(object):
             print("There are {} layers to update.".format(len(self.optimizer.param_groups[0]['params'])))
             
             
-            print("--------------------BEFORE TRAIN DATA--------------------")
-            # print("data_to_load['train'] : ", next(iter(data_to_load['train'])))
+            # print("--------------------BEFORE TRAIN DATA--------------------")
+            # # print("data_to_load['train'] : ", next(iter(data_to_load['train'])))
             
-            if not os.path.exists(f"./dataloader_data/{self.save_path}/"):
-                os.makedirs(f"./dataloader_data/{self.save_path}/",  exist_ok=True)
+            # if not os.path.exists(f"./dataloader_data/{self.save_path}/"):
+            #     os.makedirs(f"./dataloader_data/{self.save_path}/",  exist_ok=True)
             
             
-            # 데이터를 텍스트 파일로 저장
-            with open(f"./dataloader_data/{self.save_path}/{epoch}.txt", "w") as f:
-                for item in next(iter(data_to_load['train'])):
-                    if isinstance(item, torch.Tensor):
-                        # 텐서를 NumPy 배열로 변환한 후 리스트로 변환
-                        item = item.detach().cpu().numpy().tolist()
-                    elif isinstance(item, list):
-                        # 리스트 내부의 텐서들을 NumPy 배열로 변환한 후 리스트로 변환
-                        item = [tensor.detach().cpu().numpy().tolist() if isinstance(tensor, torch.Tensor) else tensor for tensor in item]
-                    f.write(str(item) + "\n")
-            print("---------------------------------------------------------")
+            # # 데이터를 텍스트 파일로 저장
+            # with open(f"./dataloader_data/{self.save_path}/{epoch}.txt", "w") as f:
+            #     for item in next(iter(data_to_load['train'])):
+            #         if isinstance(item, torch.Tensor):
+            #             # 텐서를 NumPy 배열로 변환한 후 리스트로 변환
+            #             item = item.detach().cpu().numpy().tolist()
+            #         elif isinstance(item, list):
+            #             # 리스트 내부의 텐서들을 NumPy 배열로 변환한 후 리스트로 변환
+            #             item = [tensor.detach().cpu().numpy().tolist() if isinstance(tensor, torch.Tensor) else tensor for tensor in item]
+            #         f.write(str(item) + "\n")
+            # print("---------------------------------------------------------")
 
             # Get the losses and the record dictionaries for training and validation.
             train_loss, train_record_dict = self.train(data_to_load['train'], epoch)
@@ -310,7 +320,9 @@ class ABAW2Trainer(object):
         metric_handler = ContinuousMetricsCalculatorTrial(self.metrics, self.emotional_dimension,
                                                           output_handler, continuous_label_handler)
         total_batch_counter = 0
+        # print("before before batch batch")
         for batch_index, (X, Y, trials, lengths, indices) in tqdm(enumerate(data_loader), total=len(data_loader)):
+            # print("after loop dataloader")
             total_batch_counter += len(trials)
 
             if 'frame' in X:
@@ -326,7 +338,7 @@ class ABAW2Trainer(object):
                 inputs3 = X['mfcc'].to(self.device)
 
             if 'egemaps' in X:
-                inputs = X['egemaps'].to(self.device)
+                inputs5 = X['egemaps'].to(self.device)
 
             if 'vggish' in X:
                 inputs4 = X['vggish'].to(self.device)
@@ -350,13 +362,55 @@ class ABAW2Trainer(object):
                         loss_weights[:, :, 1] *= 1
                     else:
                         raise ValueError("Unknown emotion dimention to train!")
+            
+            if self.model_name.__contains__('jca'):
+                batch, seq_len, channel, width, height = inputs.shape
+                # inputs = inputs.view(batch, channel, seq_len, width, height)
+                # inputs = inputs.unsqueeze(dim=3).expand(batch, channel, seq_len, self.subseq_len, width, height)
+                inputs = inputs.unsqueeze(dim=3).expand(batch, seq_len, channel, self.subseq_len, width, height)
+                
+                visual_feats = torch.empty((batch, seq_len, 25088), dtype=inputs.dtype, device = inputs.device)
+                aud_feats = torch.empty((batch, seq_len, 512), dtype=inputs.dtype, device = inputs.device)            
+                
+                # print("inputs.shape : ", inputs.shape)
+                if len(X.keys())>1:
+                    for i in range(batch):
+                        # print("video shape : ", inputs.shape)
+                        # print("audio shape : ", inputs3.shape)
+                        # inputs_vid = inputs[i, :, :, :,:,:]
+                        # inputs_vid = inputs_vid.view([self.subseq_len, seq_len, channel, 224, 224])
+                        # print("inputs_vid.shape : ", inputs_vid.shape)
+                        
+                        aud_feat, visualfeat, _ = self.model(inputs[i, :, :, :,:,:], inputs3)
+                        # aud_feat, visualfeat, _ = self.model(inputs_vid, inputs3)
+                        
+                        visual_feats[i,:,:] = visualfeat
+                        aud_feats[i,:,:] = aud_feat
 
-            if len(X.keys())>1:
-                outputs = self.model(inputs3, inputs)
-                # outputs = self.model(inputs, inputs4, inputs3)
+                        audiovisual_vouts, audiovisual_aouts = self.fusion_model(aud_feats, visual_feats)
+                        voutputs = audiovisual_vouts.view(-1, audiovisual_vouts.shape[0]*audiovisual_vouts.shape[1])
+                        aoutputs = audiovisual_aouts.view(-1, audiovisual_aouts.shape[0]*audiovisual_aouts.shape[1])                        
+                        
+                        # print("print(voutputs.shape) : ",voutputs.shape)
+                        # print("aoutputs.shape : ", aoutputs.shape)
+                    # outputs = self.model(inputs, inputs3)
+                    # outputs = self.model(inputs, inputs4, inputs3)
+                else:
+                    outputs = self.model(inputs)
+                
+                
             else:
-                outputs = self.model(inputs)
-
+                if len(X.keys())>1:
+                    # print("model_name: ", self.model_name)
+                    # print("frame : ", inputs.shape)
+                    # print("mfcc : ", inputs4.shape)
+                    # print("vggish : ", inputs3.shape)
+                    outputs = self.model(inputs, inputs4, inputs3)
+                else:
+                    outputs = self.model(inputs)                    
+            
+            
+            # print(outputs, labels.shape)
             output_handler.update_output_for_seen_trials(outputs.detach().cpu().numpy(), trials, indices, lengths)
             continuous_label_handler.update_output_for_seen_trials(labels.detach().cpu().numpy(), trials, indices, lengths)
 

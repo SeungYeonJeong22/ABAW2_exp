@@ -9,9 +9,10 @@ config_preprocessing = {
     "test_video_path": r"../data/Affwild2/test_video/new_vids",
     # "annotation_path": r"../data/Affwild2/annotations/VA_Estimation_Challenge",
     "annotation_path": r"../data/Affwild2/annotations/VA_Estimation_Challenge_remove_null",
-    "image_path": r"../data/Affwild2/resized_cropped_aligned_images",
+    "image_path": r"../data/Affwild2/resized_cropped_aligned_images_224_224",
     # "output_path": r"Affwild2_processed_ver2",
-    "output_path": r"Affwild2_processed_ver3",
+    # "output_path": r"Affwild2_processed_ver3",
+    "output_path": r"Affwild2_processed_model2",
     # "output_path": r"Affwild2_processed",
 
     # "aural_feature_list": ["mfcc", "egemaps", "vggish"],

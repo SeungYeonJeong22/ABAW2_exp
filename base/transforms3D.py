@@ -5,7 +5,7 @@ from PIL import Image
 import numpy as np
 import numbers
 import torch
-
+import gc
 
 class GroupNumpyToPILImage(object):
     def __init__(self, use_inverse):
@@ -91,8 +91,11 @@ class GroupNormalize(object):
         for k in range(L):
             img = self.normalize(Imgs[k, :, :, :])
             tensor.append(img)
-
-        return torch.stack(tensor, dim=0)
+            
+        stack_tensor = torch.stack(tensor, dim=0)
+        del tensor
+        gc.collect()
+        return stack_tensor
 
 
 class GroupScale(object):
@@ -118,10 +121,14 @@ class Stack(object):
 
     def __call__(self, img_group):
         if img_group[0].mode == 'L':
-            return np.concatenate([np.expand_dims(x, 2) for x in img_group], axis=2)
+            ret_val = np.concatenate([np.expand_dims(x, 2) for x in img_group], axis=2)
         elif img_group[0].mode == 'RGB':
-            # return np.concatenate(img_group, axis=2)
-            return np.stack(img_group, axis=0)
+            ret_val = np.stack(img_group, axis=0)
+
+        del img_group
+        gc.collect()
+
+        return ret_val
 
 
 class ToTorchFormatTensor(object):

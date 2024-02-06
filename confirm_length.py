@@ -33,7 +33,8 @@ annotation_path = config['annotation_path']
 
 # dataset_info =load_single_pkl(r"H:\Affwild2_processed", "dataset_info")
 # dataset_info =load_single_pkl(r"Affwild2_processed_ver2", "dataset_info")
-dataset_info =load_single_pkl(r"Affwild2_processed_ver3", "dataset_info")
+# dataset_info =load_single_pkl(r"Affwild2_processed_ver3", "dataset_info")
+dataset_info =load_single_pkl(r"Affwild2_processed_model2", "dataset_info")
 video_to_partition_dict = dataset_info['video_to_partition_dict']
 annotation_to_partition_dict = dataset_info['annotation_to_partition_dict']
 
@@ -43,8 +44,10 @@ annotation_to_partition_dict = dataset_info['annotation_to_partition_dict']
 # available_frame_indices = load_single_pkl(r"Affwild2_processed_ver2", "available_frame_indices")
 # labeled_frame_indices = load_single_pkl(r"Affwild2_processed_ver2", "labeled_frame_indices")
 
-available_frame_indices = load_single_pkl(r"Affwild2_processed_ver3", "available_frame_indices")
-labeled_frame_indices = load_single_pkl(r"Affwild2_processed_ver3", "labeled_frame_indices")
+# available_frame_indices = load_single_pkl(r"Affwild2_processed_ver3", "available_frame_indices")
+# labeled_frame_indices = load_single_pkl(r"Affwild2_processed_ver3", "labeled_frame_indices")
+available_frame_indices = load_single_pkl(r"Affwild2_processed_model2", "available_frame_indices")
+labeled_frame_indices = load_single_pkl(r"Affwild2_processed_model2", "labeled_frame_indices")
 
 count = 1
 result = []
