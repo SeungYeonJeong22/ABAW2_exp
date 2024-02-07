@@ -158,8 +158,7 @@ class Experiment(object):
 
 
     def init_dataloader(self, data_dict, mean_std_info, fold=4):
-        # self.init_random_seed()
-        
+        self.init_random_seed()
         if self.experiment_name in "ABAW2":
         #     arranger = ABAW2_VA_Arranger(self.dataset_path, window_length=self.window_length, hop_length=self.hop_length,
         #                                 debug=self.debug)
@@ -175,7 +174,6 @@ class Experiment(object):
             train_dataset = ABAW2_VA_Dataset(data_dict['Train_Set'], time_delay=self.time_delay, emotion=self.train_emotion,
                                             head=self.head, modality=self.modality,
                                             mode='train', fold=fold, mean_std_info=mean_std_info)
-            self.init_random_seed()
             train_loader = torch.utils.data.DataLoader(
                 dataset=train_dataset, batch_size=self.batch_size, shuffle=False)
 
@@ -201,7 +199,6 @@ class Experiment(object):
             train_dataset = JCA_VA_Dataset(data_dict['Train_Set'], time_delay=self.time_delay, emotion=self.train_emotion,
                                             head=self.head, modality=self.modality,
                                             mode='train', fold=fold, mean_std_info=mean_std_info)
-            self.init_random_seed()
             
             train_loader = torch.utils.data.DataLoader(
                 dataset=train_dataset, batch_size=self.batch_size, shuffle=False)
@@ -217,7 +214,6 @@ class Experiment(object):
         return dataloader_dict
 
     def experiment(self):
-
         criterion = CCCLoss()
 
         # for fold in iter(self.folds_to_run):
@@ -266,15 +262,19 @@ class Experiment(object):
         checkpoint_filename = os.path.join(save_path, "checkpoint.pkl")
 
         model = self.init_model()
-        model = nn.DataParallel(model)
+        model = nn.DataParallel(model, device_ids = [1, 0, 2]).cuda()
         
         data_dict_fold, mean_std_info = self.init_arranger()
+        
         
         for fold, dataloader_dict in enumerate(data_dict_fold):
             dataloader_dict = self.init_dataloader(dataloader_dict, mean_std_info, fold)
         
             # 파라미터가 다름
             if "jca" in self.args.experiment_name:
+                
+                print("self.gpu : ", self.gpu)
+                
                 trainer = ABAW2Trainer(model, model_name=self.model_name, learning_rate=self.learning_rate, subseq_len = self.subseq_length,
                                     min_learning_rate=self.min_learning_rate,
                                     metrics=self.metrics, save_path=save_path, early_stopping=self.early_stopping,

@@ -6,10 +6,10 @@ from base.transforms3D import *
 
 from torchvision.transforms import transforms
 import numpy as np
-import random
 from operator import itemgetter
-import random
 from sklearn.model_selection import KFold
+
+import random
 
 
 class ABAW2_VA_Arranger(object):
@@ -20,6 +20,8 @@ class ABAW2_VA_Arranger(object):
         self.window_length = window_length
         self.hop_length = hop_length
         self.debug = debug
+        
+        
 
     # @staticmethod
     # def generate_partition_dict_for_cross_validation(partition_dict, fold):
@@ -58,31 +60,23 @@ class ABAW2_VA_Arranger(object):
 
     #     return new_partition_dict
     
+    
     @staticmethod
     def generate_partition_dict_for_cross_validation2(partition_dict, fold=None):
+        random.seed(0)
         new_partition_dict = {'Train_Set': {}, 'Validation_Set': {}}
         
-        tmp_part_dict = partition_dict.copy()
-        tmp_part_dict['Train_Set'].update(partition_dict['Validation_Set'])
-        new_partition_all = tmp_part_dict['Train_Set']
-        
-        trials_of_train_set = list(partition_dict['Train_Set'].keys())
-        trials_of_original_validate_set = list(partition_dict['Validation_Set'].keys())
-
-        trials_before_split = trials_of_train_set + trials_of_original_validate_set
-
-        valid = random.sample(trials_before_split, int(len(trials_before_split) * 0.2))
-        train = [t for t in trials_before_split if not t in valid]
+        valid = random.sample(partition_dict.keys(), int(len(partition_dict.keys()) * 0.2))
+        train = [t for t in partition_dict.keys() if not t in valid]
         
         for trial_train in train:
-            new_partition_dict["Train_Set"].update({trial_train:new_partition_all[trial_train]})
+            new_partition_dict["Train_Set"].update({trial_train:partition_dict[trial_train]})
             
         for trial_valid in valid:
-            new_partition_dict["Validation_Set"].update({trial_valid:new_partition_all[trial_valid]})
+            new_partition_dict["Validation_Set"].update({trial_valid:partition_dict[trial_valid]})
             
-            
-        
         return new_partition_dict
+    
     
     def custom_sampled_list(self, sampled_list, partition, trial, length):
         start = 0
@@ -119,11 +113,10 @@ class ABAW2_VA_Arranger(object):
         tmp_part_dict['Train_Set'].update(partition_dict['Validation_Set'])
         total_partition_all = tmp_part_dict['Train_Set']
         
-        
         # partition_dict = self.generate_partition_dict_for_cross_validation(partition_dict, fold)
         # print("1", len(partition_dict['Train_Set']), len(partition_dict['Validation_Set']))
         
-        partition_dict = self.generate_partition_dict_for_cross_validation2(partition_dict, fold)
+        partition_dict = self.generate_partition_dict_for_cross_validation2(total_partition_all, fold)
         # print("2", len(partition_dict['Train_Set']), len(partition_dict['Validation_Set']))
 
         sampled_list_fold = []
@@ -154,8 +147,8 @@ class ABAW2_VA_Arranger(object):
                 if self.debug and trial_count >= self.debug:
                     break                
                     
-            sampled_list["Train_Set"].append(sampled_list_train)
-            sampled_list['Validation_Set'].append(sampled_list_valid)
+            # sampled_list["Train_Set"].append(sampled_list_train)
+            # sampled_list['Validation_Set'].append(sampled_list_valid)
             
             sampled_list_fold.append(sampled_list)
         
@@ -273,7 +266,10 @@ class ABAW2_VA_Dataset(Dataset):
         return frames
 
     def __getitem__(self, index):
-        path = self.data_list[index][0]
+        try:
+            path = self.data_list[index][0]
+        except: 
+            print("self.data_list[index][0] : ", self.data_list[index][0])
         trial = self.data_list[index][1]
         indices = self.data_list[index][2]
         length = self.data_list[index][3]
