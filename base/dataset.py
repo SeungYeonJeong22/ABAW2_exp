@@ -9,6 +9,7 @@ import numpy as np
 import random
 from operator import itemgetter
 import random
+from sklearn.model_selection import KFold
 
 
 class ABAW2_VA_Arranger(object):
@@ -78,52 +79,117 @@ class ABAW2_VA_Arranger(object):
             
         for trial_valid in valid:
             new_partition_dict["Validation_Set"].update({trial_valid:new_partition_all[trial_valid]})
+            
+            
         
         return new_partition_dict
+    
+    def custom_sampled_list(self, sampled_list, partition, trial, length):
+        start = 0
+        end = start + self.window_length
+
+        if end < length:
+            # Windows before the last one
+            while end < length:
+                indices = np.arange(start, end)
+                path = os.path.join(self.dataset_path, trial)
+                sampled_list[partition].append([path, trial, indices, length])
+                start = start + self.hop_length
+                end = start + self.window_length
+
+            # The last window ends with the trial length, which ensures that no data are wasted.
+            start = length - self.window_length
+            end = length
+            indices = np.arange(start, end)
+            path = os.path.join(self.dataset_path, trial)
+            sampled_list[partition].append([path, trial, indices, length])
+        else:
+            end = length
+            indices = np.arange(start, end)
+            path = os.path.join(self.dataset_path, trial)
+            sampled_list[partition].append([path, trial, indices, length])
+            
+        return sampled_list
+
         
     def resample_according_to_window_and_hop_length(self, fold):
         partition_dict = self.dataset_info['partition']
-
+        
+        tmp_part_dict = partition_dict.copy()
+        tmp_part_dict['Train_Set'].update(partition_dict['Validation_Set'])
+        total_partition_all = tmp_part_dict['Train_Set']
+        
+        
         # partition_dict = self.generate_partition_dict_for_cross_validation(partition_dict, fold)
         # print("1", len(partition_dict['Train_Set']), len(partition_dict['Validation_Set']))
         
         partition_dict = self.generate_partition_dict_for_cross_validation2(partition_dict, fold)
         # print("2", len(partition_dict['Train_Set']), len(partition_dict['Validation_Set']))
 
-        sampled_list = {'Train_Set': [], 'Validation_Set': [], 'Target_Set': []}
-
-        for partition, trials in partition_dict.items():
-            trial_count = 0
-            for trial, length in trials.items():
-
-                start = 0
-                end = start + self.window_length
-
-                if end < length:
-                    # Windows before the last one
-                    while end < length:
-                        indices = np.arange(start, end)
-                        path = os.path.join(self.dataset_path, trial)
-                        sampled_list[partition].append([path, trial, indices, length])
-                        start = start + self.hop_length
-                        end = start + self.window_length
-
-                    # The last window ends with the trial length, which ensures that no data are wasted.
-                    start = length - self.window_length
-                    end = length
-                    indices = np.arange(start, end)
-                    path = os.path.join(self.dataset_path, trial)
-                    sampled_list[partition].append([path, trial, indices, length])
-                else:
-                    end = length
-                    indices = np.arange(start, end)
-                    path = os.path.join(self.dataset_path, trial)
-                    sampled_list[partition].append([path, trial, indices, length])
-
+        sampled_list = {'Train_Set': [], 'Validation_Set': []}
+        
+        kfold = KFold(n_splits=5)
+        
+        trial2idx = {}
+        for i, tr in enumerate(total_partition_all):
+            trial2idx[i] = tr
+                
+        for train_idx, valid_idx in kfold.split(total_partition_all):
+            trial_count = 0 
+            for train_trials_idx in train_idx:
+                partition = "Train_Set"
+                length = total_partition_all[trial2idx[train_trials_idx]]
+                sampled_list_train = self.custom_sampled_list(sampled_list, partition, trial2idx[train_trials_idx], length)
                 trial_count += 1
-
                 if self.debug and trial_count >= self.debug:
                     break
+                
+            for valid_trials_idx in valid_idx:
+                partition = "Validation_Set"
+                length = total_partition_all[trial2idx[valid_trials_idx]]
+                sampled_list_valid = self.custom_sampled_list(sampled_list, partition, trial2idx[valid_trials_idx], length)
+                
+                trial_count += 1
+                if self.debug and trial_count >= self.debug:
+                    break                
+                
+        sampled_list["Train_Set"].append(sampled_list_train)
+        sampled_list['Validation_Set'].append(sampled_list_valid)
+        
+
+        ############# 오리지널 코드 ################
+        # for partition, trials in partition_dict.items():
+        #     trial_count = 0
+        #     for trial, length in trials.items():
+
+        #         start = 0
+        #         end = start + self.window_length
+
+        #         if end < length:
+        #             # Windows before the last one
+        #             while end < length:
+        #                 indices = np.arange(start, end)
+        #                 path = os.path.join(self.dataset_path, trial)
+        #                 sampled_list[partition].append([path, trial, indices, length])
+        #                 start = start + self.hop_length
+        #                 end = start + self.window_length
+
+        #             # The last window ends with the trial length, which ensures that no data are wasted.
+        #             start = length - self.window_length
+        #             end = length
+        #             indices = np.arange(start, end)
+        #             path = os.path.join(self.dataset_path, trial)
+        #             sampled_list[partition].append([path, trial, indices, length])
+        #         else:
+        #             end = length
+        #             indices = np.arange(start, end)
+        #             path = os.path.join(self.dataset_path, trial)
+        #             sampled_list[partition].append([path, trial, indices, length])
+
+        #         trial_count += 1
+
+        #         if self.debug and trial_count >= self.debug:
+        #             break
 
         return sampled_list
 
