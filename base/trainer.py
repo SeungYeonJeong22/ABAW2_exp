@@ -24,8 +24,6 @@ class ABAW2Trainer(object):
         self.args = kwargs
         self.device = device
         
-        print("self.device : ", self.device)
-        
         # self.model = nn.DataParallel(model)
         self.model = model.to(device)
         self.model_name = model_name
@@ -190,26 +188,6 @@ class ABAW2Trainer(object):
             time_epoch_start = time.time()
 
             print("There are {} layers to update.".format(len(self.optimizer.param_groups[0]['params'])))
-            
-            
-            # print("--------------------BEFORE TRAIN DATA--------------------")
-            # # print("data_to_load['train'] : ", next(iter(data_to_load['train'])))
-            
-            # if not os.path.exists(f"./dataloader_data/{self.save_path}/"):
-            #     os.makedirs(f"./dataloader_data/{self.save_path}/",  exist_ok=True)
-            
-            
-            # # 데이터를 텍스트 파일로 저장
-            # with open(f"./dataloader_data/{self.save_path}/{epoch}.txt", "w") as f:
-            #     for item in next(iter(data_to_load['train'])):
-            #         if isinstance(item, torch.Tensor):
-            #             # 텐서를 NumPy 배열로 변환한 후 리스트로 변환
-            #             item = item.detach().cpu().numpy().tolist()
-            #         elif isinstance(item, list):
-            #             # 리스트 내부의 텐서들을 NumPy 배열로 변환한 후 리스트로 변환
-            #             item = [tensor.detach().cpu().numpy().tolist() if isinstance(tensor, torch.Tensor) else tensor for tensor in item]
-            #         f.write(str(item) + "\n")
-            # print("---------------------------------------------------------")
 
             # Get the losses and the record dictionaries for training and validation.
             train_loss, train_record_dict = self.train(data_to_load['train'], epoch)
@@ -301,7 +279,6 @@ class ABAW2Trainer(object):
             print("self.load_best_at_each_epoch : ", self.load_best_at_each_epoch)
             if self.load_best_at_each_epoch:
                 checkpoint = torch.load(self.load_best_at_each_epoch + "/0" + "/checkpoint.pkl")
-                # self.model.load_state_dict(self.best_epoch_info['model_weights'])
                 self.model.load_state_dict(checkpoint['model_weights'])
                 print("self.model.load_state_dict(checkpoint['model_weights']) :", self.model.load_state_dict(checkpoint['model_weights']))
 
@@ -323,10 +300,7 @@ class ABAW2Trainer(object):
         metric_handler = ContinuousMetricsCalculatorTrial(self.metrics, self.emotional_dimension,
                                                           output_handler, continuous_label_handler)
         total_batch_counter = 0
-        # print("before before batch batch")
         for batch_index, (X, Y, trials, lengths, indices) in tqdm(enumerate(data_loader), total=len(data_loader)):
-            # if batch_index < 54: continue
-            # print("after loop dataloader")
             total_batch_counter += len(trials)
 
             if 'frame' in X:
@@ -370,10 +344,6 @@ class ABAW2Trainer(object):
                 
             if self.model_name.__contains__('2d1d'):
                 if len(X.keys())>1:
-                    # print("model_name: ", self.model_name)
-                    # print("frame : ", inputs.shape)
-                    # print("mfcc : ", inputs4.shape)
-                    # print("vggish : ", inputs3.shape)
                     outputs = self.model(inputs, inputs4, inputs3)
                 else:
                     outputs = self.model(inputs)                    
@@ -405,16 +375,10 @@ class ABAW2Trainer(object):
                         audiovisual_vouts, audiovisual_aouts = self.fusion_model(aud_feats, visual_feats)
                         voutputs = audiovisual_vouts.view(-1, audiovisual_vouts.shape[0]*audiovisual_vouts.shape[1])
                         aoutputs = audiovisual_aouts.view(-1, audiovisual_aouts.shape[0]*audiovisual_aouts.shape[1])                        
-                        
-                        # print("print(voutputs.shape) : ",voutputs.shape)
-                        # print("aoutputs.shape : ", aoutputs.shape)
-                    # outputs = self.model(inputs, inputs3)
-                    # outputs = self.model(inputs, inputs4, inputs3)
                 else:
                     outputs = self.model(inputs)
             
             
-            # print(outputs, labels.shape)
             output_handler.update_output_for_seen_trials(outputs.detach().cpu().numpy(), trials, indices, lengths)
             continuous_label_handler.update_output_for_seen_trials(labels.detach().cpu().numpy(), trials, indices, lengths)
 
@@ -425,8 +389,6 @@ class ABAW2Trainer(object):
             if train_mode:
                 loss.backward()
                 self.optimizer.step()
-
-            #  print_progress(batch_index, len(data_loader))
 
         epoch_loss = running_loss / total_batch_counter
 
