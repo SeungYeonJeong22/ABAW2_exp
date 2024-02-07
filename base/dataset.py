@@ -62,18 +62,22 @@ class ABAW2_VA_Arranger(object):
     
     
     @staticmethod
-    def generate_partition_dict_for_cross_validation2(partition_dict, fold=None):
+    def split_train_test_trial(partition_dict, fold=None):
         random.seed(0)
-        new_partition_dict = {'Train_Set': {}, 'Validation_Set': {}}
+        new_partition_dict = {'Train_Set': {}, 'Test_Set': {}}
         
-        valid = random.sample(partition_dict.keys(), int(len(partition_dict.keys()) * 0.2))
-        train = [t for t in partition_dict.keys() if not t in valid]
+        # 전체 데이터에서 20%만 테스트로써 사용
+        partition_dict['Train_Set'].update(partition_dict['Validation_Set'])
+        partition_dict = partition_dict['Train_Set']
+        
+        test = random.sample(partition_dict.keys(), int(len(partition_dict.keys()) * 0.2))
+        train = [t for t in partition_dict.keys() if not t in test]
         
         for trial_train in train:
             new_partition_dict["Train_Set"].update({trial_train:partition_dict[trial_train]})
             
-        for trial_valid in valid:
-            new_partition_dict["Validation_Set"].update({trial_valid:partition_dict[trial_valid]})
+        for trial_test in test:
+            new_partition_dict["Test_Set"].update({trial_test:partition_dict[trial_test]})
             
         return new_partition_dict
     
@@ -109,48 +113,47 @@ class ABAW2_VA_Arranger(object):
     def resample_according_to_window_and_hop_length(self, fold=4):
         partition_dict = self.dataset_info['partition']
         
-        tmp_part_dict = partition_dict.copy()
-        tmp_part_dict['Train_Set'].update(partition_dict['Validation_Set'])
-        total_partition_all = tmp_part_dict['Train_Set']
-        
-        # partition_dict = self.generate_partition_dict_for_cross_validation(partition_dict, fold)
-        # print("1", len(partition_dict['Train_Set']), len(partition_dict['Validation_Set']))
-        
-        partition_dict = self.generate_partition_dict_for_cross_validation2(total_partition_all, fold)
-        # print("2", len(partition_dict['Train_Set']), len(partition_dict['Validation_Set']))
+        # train / test 비율 8:2
+        partition_dict = self.split_train_test_trial(partition_dict, fold)
 
         sampled_list_fold = []
         
         kfold = KFold(n_splits=5)
         
+        
         trial2idx = {}
-        for i, tr in enumerate(total_partition_all):
+        for i, tr in enumerate(partition_dict['Train_Set']):
             trial2idx[i] = tr
                 
-        for train_idx, valid_idx in kfold.split(total_partition_all):
-            sampled_list = {'Train_Set': [], 'Validation_Set': []}
-            trial_count = 0 
+        # train set에서 kfold 5, train / valid 4:1
+        for train_idx, valid_idx in kfold.split(partition_dict['Train_Set']):
+            sampled_list_dict = {'Train_Set': [], 'Validation_Set': [], 'Test_Set':[]}
+            trial_count = 0
             for train_trials_idx in train_idx:
                 partition = "Train_Set"
-                length = total_partition_all[trial2idx[train_trials_idx]]
-                sampled_list_train = self.custom_sampled_list(sampled_list, partition, trial2idx[train_trials_idx], length)
+                length = partition_dict['Train_Set'][trial2idx[train_trials_idx]]
+                self.custom_sampled_list(sampled_list_dict, partition, trial2idx[train_trials_idx], length)
                 trial_count += 1
                 if self.debug and trial_count >= self.debug:
                     break
                 
             for valid_trials_idx in valid_idx:
                 partition = "Validation_Set"
-                length = total_partition_all[trial2idx[valid_trials_idx]]
-                sampled_list_valid = self.custom_sampled_list(sampled_list, partition, trial2idx[valid_trials_idx], length)
+                # partition_dict['Train_Set'] -> train에서 kfold하므로 (validation_set x)
+                length = partition_dict['Train_Set'][trial2idx[valid_trials_idx]]
+                self.custom_sampled_list(sampled_list_dict, partition, trial2idx[valid_trials_idx], length)
                 
                 trial_count += 1
                 if self.debug and trial_count >= self.debug:
                     break                
                     
-            # sampled_list["Train_Set"].append(sampled_list_train)
-            # sampled_list['Validation_Set'].append(sampled_list_valid)
+                    
+            # fold
+            sampled_list_fold.append(sampled_list_dict)
             
-            sampled_list_fold.append(sampled_list)
+        # test set은 fold랑 별개
+        for test in partition_dict['Test_Set']:
+            self.custom_sampled_list(sampled_list_dict, 'Test_Set', test, length)
         
 
         ############# 오리지널 코드 ################
@@ -188,7 +191,7 @@ class ABAW2_VA_Arranger(object):
         #             break
 
         # return sampled_list
-        return sampled_list_fold
+        return sampled_list_fold, sampled_list_dict['Test_Set']
 
 
 class ABAW2_VA_Dataset(Dataset):
@@ -211,7 +214,7 @@ class ABAW2_VA_Dataset(Dataset):
         elif self.mode == "validate":
             partition = "Validation_Set"
         elif self.mode == "test":
-            partition = "Target_Set"
+            partition = "Test_Set"
         else:
             raise ValueError("Unknown partition!")
 
@@ -266,10 +269,7 @@ class ABAW2_VA_Dataset(Dataset):
         return frames
 
     def __getitem__(self, index):
-        try:
-            path = self.data_list[index][0]
-        except: 
-            print("self.data_list[index][0] : ", self.data_list[index][0])
+        path = self.data_list[index][0]
         trial = self.data_list[index][1]
         indices = self.data_list[index][2]
         length = self.data_list[index][3]
