@@ -112,7 +112,7 @@ class ABAW2_VA_Arranger(object):
         return sampled_list
 
         
-    def resample_according_to_window_and_hop_length(self, fold):
+    def resample_according_to_window_and_hop_length(self, fold=4):
         partition_dict = self.dataset_info['partition']
         
         tmp_part_dict = partition_dict.copy()
@@ -126,7 +126,7 @@ class ABAW2_VA_Arranger(object):
         partition_dict = self.generate_partition_dict_for_cross_validation2(partition_dict, fold)
         # print("2", len(partition_dict['Train_Set']), len(partition_dict['Validation_Set']))
 
-        sampled_list = {'Train_Set': [], 'Validation_Set': []}
+        sampled_list_fold = []
         
         kfold = KFold(n_splits=5)
         
@@ -135,6 +135,7 @@ class ABAW2_VA_Arranger(object):
             trial2idx[i] = tr
                 
         for train_idx, valid_idx in kfold.split(total_partition_all):
+            sampled_list = {'Train_Set': [], 'Validation_Set': []}
             trial_count = 0 
             for train_trials_idx in train_idx:
                 partition = "Train_Set"
@@ -152,9 +153,11 @@ class ABAW2_VA_Arranger(object):
                 trial_count += 1
                 if self.debug and trial_count >= self.debug:
                     break                
-                
-        sampled_list["Train_Set"].append(sampled_list_train)
-        sampled_list['Validation_Set'].append(sampled_list_valid)
+                    
+            sampled_list["Train_Set"].append(sampled_list_train)
+            sampled_list['Validation_Set'].append(sampled_list_valid)
+            
+            sampled_list_fold.append(sampled_list)
         
 
         ############# 오리지널 코드 ################
@@ -191,7 +194,8 @@ class ABAW2_VA_Arranger(object):
         #         if self.debug and trial_count >= self.debug:
         #             break
 
-        return sampled_list
+        # return sampled_list
+        return sampled_list_fold
 
 
 class ABAW2_VA_Dataset(Dataset):
