@@ -23,6 +23,9 @@ class ABAW2Trainer(object):
         
         self.args = kwargs
         self.device = device
+        
+        print("self.device : ", self.device)
+        
         # self.model = nn.DataParallel(model)
         self.model = model.to(device)
         self.model_name = model_name
@@ -322,6 +325,7 @@ class ABAW2Trainer(object):
         total_batch_counter = 0
         # print("before before batch batch")
         for batch_index, (X, Y, trials, lengths, indices) in tqdm(enumerate(data_loader), total=len(data_loader)):
+            # if batch_index < 54: continue
             # print("after loop dataloader")
             total_batch_counter += len(trials)
 

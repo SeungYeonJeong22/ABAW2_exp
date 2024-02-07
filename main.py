@@ -99,7 +99,7 @@ if __name__ == '__main__':
     parser.add_argument('-cross_validation', default=1, type=int)
     parser.add_argument('-folds_to_run', default=[0], nargs="+", type=int, help='Which fold(s) to run? Each fold may take 1-2 days.')
 
-    parser.add_argument('-learning_rate', default=1e-5, type=float, help='The initial learning rate.')
+    parser.add_argument('-learning_rate', default=1e-4, type=float, help='The initial learning rate.')
     parser.add_argument('-min_learning_rate', default=1e-6, type=float, help='The minimum learning rate.')
     parser.add_argument('-num_epochs', default=100, type=int, help='The total of epochs to run during training.')
     parser.add_argument('-min_num_epochs', default=0, type=int, help='The minimum epoch to run at least.')
