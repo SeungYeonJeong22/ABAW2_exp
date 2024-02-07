@@ -133,7 +133,7 @@ class ABAW2_VA_Arranger(object):
             for train_trials_idx in train_idx:
                 partition = "Train_Set"
                 length = total_partition_all[trial2idx[train_trials_idx]]
-                sampled_list_train = self.custom_sampled_list(sampled_list, partition, trial2idx[train_trials_idx], length)
+                self.custom_sampled_list(sampled_list, partition, trial2idx[train_trials_idx], length)
                 trial_count += 1
                 if self.debug and trial_count >= self.debug:
                     break
@@ -141,17 +141,13 @@ class ABAW2_VA_Arranger(object):
             for valid_trials_idx in valid_idx:
                 partition = "Validation_Set"
                 length = total_partition_all[trial2idx[valid_trials_idx]]
-                sampled_list_valid = self.custom_sampled_list(sampled_list, partition, trial2idx[valid_trials_idx], length)
+                self.custom_sampled_list(sampled_list, partition, trial2idx[valid_trials_idx], length)
                 
                 trial_count += 1
                 if self.debug and trial_count >= self.debug:
                     break                
-                    
-            # sampled_list["Train_Set"].append(sampled_list_train)
-            # sampled_list['Validation_Set'].append(sampled_list_valid)
-            
+
             sampled_list_fold.append(sampled_list)
-        
 
         ############# 오리지널 코드 ################
         # for partition, trials in partition_dict.items():
