@@ -362,7 +362,18 @@ class ABAW2Trainer(object):
                         loss_weights[:, :, 1] *= 1
                     else:
                         raise ValueError("Unknown emotion dimention to train!")
-            
+                
+                
+            if self.model_name.__contains__('2d1d'):
+                if len(X.keys())>1:
+                    # print("model_name: ", self.model_name)
+                    # print("frame : ", inputs.shape)
+                    # print("mfcc : ", inputs4.shape)
+                    # print("vggish : ", inputs3.shape)
+                    outputs = self.model(inputs, inputs4, inputs3)
+                else:
+                    outputs = self.model(inputs)                    
+                    
             if self.model_name.__contains__('jca'):
                 batch, seq_len, channel, width, height = inputs.shape
                 # inputs = inputs.view(batch, channel, seq_len, width, height)
@@ -397,17 +408,6 @@ class ABAW2Trainer(object):
                     # outputs = self.model(inputs, inputs4, inputs3)
                 else:
                     outputs = self.model(inputs)
-                
-                
-            else:
-                if len(X.keys())>1:
-                    # print("model_name: ", self.model_name)
-                    # print("frame : ", inputs.shape)
-                    # print("mfcc : ", inputs4.shape)
-                    # print("vggish : ", inputs3.shape)
-                    outputs = self.model(inputs, inputs4, inputs3)
-                else:
-                    outputs = self.model(inputs)                    
             
             
             # print(outputs, labels.shape)

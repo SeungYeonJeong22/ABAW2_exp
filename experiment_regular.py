@@ -136,43 +136,71 @@ class Experiment(object):
             self.learning_rate) + "_mlr_" + str(self.min_learning_rate) + "_" + self.optim + '_' + self.stamp
 
 
-    def init_dataloader(self, fold):
+    def init_arranger(self, fold=0):
         self.init_random_seed()
-        
         if self.experiment_name in "ABAW2":
             arranger = ABAW2_VA_Arranger(self.dataset_path, window_length=self.window_length, hop_length=self.hop_length,
                                         debug=self.debug)
 
             # For fold = 0, it is the original partition.
-            data_dict = arranger.resample_according_to_window_and_hop_length(fold)
-            random.shuffle(data_dict['Train_Set'])
-            train_dataset = ABAW2_VA_Dataset(data_dict['Train_Set'], time_delay=self.time_delay, emotion=self.train_emotion,
-                                            head=self.head, modality=self.modality,
-                                            mode='train', fold=fold, mean_std_info=arranger.mean_std_info)
-            self.init_random_seed()
-            train_loader = torch.utils.data.DataLoader(
-                dataset=train_dataset, batch_size=self.batch_size, shuffle=False)
-
-            validate_dataset = ABAW2_VA_Dataset(data_dict['Validation_Set'], time_delay=self.time_delay,
-                                                emotion=self.train_emotion, modality=self.modality,
-                                                head=self.head, mode='validate', fold=fold, mean_std_info=arranger.mean_std_info)
-            validate_loader = torch.utils.data.DataLoader(
-                dataset=validate_dataset, batch_size=self.batch_size, shuffle=False)
-
-            dataloader_dict = {'train': train_loader, 'validate': validate_loader}
-            
+            # data_dict = arranger.resample_according_to_window_and_hop_length(fold)
+            data_dict_fold = arranger.resample_according_to_window_and_hop_length(fold)
             
         elif self.experiment_name in "jca":
-            
             arranger = JCA_VA_Arranger(self.dataset_path, window_length=self.window_length, hop_length=self.hop_length,
                                         debug=self.debug)
 
             # For fold = 0, it is the original partition.
-            data_dict = arranger.resample_according_to_window_and_hop_length(fold)
+            data_dict_fold = arranger.resample_according_to_window_and_hop_length(fold)
+            
+        return data_dict_fold, arranger.mean_std_info
+        
+
+
+    def init_dataloader(self, data_dict, mean_std_info, fold=4):
+        # self.init_random_seed()
+        
+        if self.experiment_name in "ABAW2":
+        #     arranger = ABAW2_VA_Arranger(self.dataset_path, window_length=self.window_length, hop_length=self.hop_length,
+        #                                 debug=self.debug)
+
+        #     # For fold = 0, it is the original partition.
+        #     # data_dict = arranger.resample_according_to_window_and_hop_length(fold)
+        #     data_dict = arranger.resample_according_to_window_and_hop_length(fold)
+        
+            random.shuffle(data_dict['Train_Set'])
+            # train_dataset = ABAW2_VA_Dataset(data_dict['Train_Set'], time_delay=self.time_delay, emotion=self.train_emotion,
+            #                                 head=self.head, modality=self.modality,
+            #                                 mode='train', fold=fold, mean_std_info=arranger.mean_std_info)
+            train_dataset = ABAW2_VA_Dataset(data_dict['Train_Set'], time_delay=self.time_delay, emotion=self.train_emotion,
+                                            head=self.head, modality=self.modality,
+                                            mode='train', fold=fold, mean_std_info=mean_std_info)
+            self.init_random_seed()
+            train_loader = torch.utils.data.DataLoader(
+                dataset=train_dataset, batch_size=self.batch_size, shuffle=False)
+
+            # validate_dataset = ABAW2_VA_Dataset(data_dict['Validation_Set'], time_delay=self.time_delay,
+            #                                     emotion=self.train_emotion, modality=self.modality,
+            #                                     head=self.head, mode='validate', fold=fold, mean_std_info=arranger.mean_std_info)
+            validate_dataset = ABAW2_VA_Dataset(data_dict['Validation_Set'], time_delay=self.time_delay,
+                                                emotion=self.train_emotion, modality=self.modality,
+                                                head=self.head, mode='validate', fold=fold, mean_std_info=mean_std_info)
+            validate_loader = torch.utils.data.DataLoader(
+                dataset=validate_dataset, batch_size=self.batch_size, shuffle=False)
+
+            dataloader_dict = {'train': train_loader, 'validate': validate_loader}
+                
+        elif self.experiment_name in "jca":
+            
+        #     arranger = JCA_VA_Arranger(self.dataset_path, window_length=self.window_length, hop_length=self.hop_length,
+        #                                 debug=self.debug)
+
+        #     # For fold = 0, it is the original partition.
+        #     data_dict = arranger.resample_according_to_window_and_hop_length(fold)
             random.shuffle(data_dict['Train_Set'])
             train_dataset = JCA_VA_Dataset(data_dict['Train_Set'], time_delay=self.time_delay, emotion=self.train_emotion,
                                             head=self.head, modality=self.modality,
-                                            mode='train', fold=fold, mean_std_info=arranger.mean_std_info)
+                                            mode='train', fold=fold, mean_std_info=mean_std_info)
             self.init_random_seed()
             
             train_loader = torch.utils.data.DataLoader(
@@ -180,7 +208,7 @@ class Experiment(object):
 
             validate_dataset = JCA_VA_Dataset(data_dict['Validation_Set'], time_delay=self.time_delay,
                                                 emotion=self.train_emotion, modality=self.modality,
-                                                head=self.head, mode='validate', fold=fold, mean_std_info=arranger.mean_std_info)
+                                                head=self.head, mode='validate', fold=fold, mean_std_info=mean_std_info)
             validate_loader = torch.utils.data.DataLoader(
                 dataset=validate_dataset, batch_size=self.batch_size, shuffle=False)
 
@@ -192,32 +220,59 @@ class Experiment(object):
 
         criterion = CCCLoss()
 
-        for fold in iter(self.folds_to_run):
+        # for fold in iter(self.folds_to_run):
 
-            save_path = os.path.join(self.model_save_path, self.model_name, str(fold))
-            self.load_best_at_each_epoch = str(self.load_best_at_each_epoch)
-            checkpoint_load_path = self.load_best_at_each_epoch + "/0"
+        #     save_path = os.path.join(self.model_save_path, self.model_name, str(fold))
+        #     self.load_best_at_each_epoch = str(self.load_best_at_each_epoch)
+        #     checkpoint_load_path = self.load_best_at_each_epoch + "/0"
             
-            if os.path.exists(save_path+"/0"):
-                dirs_list = os.listdir(save_path)
+        #     if os.path.exists(save_path+"/0"):
+        #         dirs_list = os.listdir(save_path)
 
-                sorted_dirs = sorted(dirs_list, key=lambda x: int(''.join(filter(str.isdigit, x))))
+        #         sorted_dirs = sorted(dirs_list, key=lambda x: int(''.join(filter(str.isdigit, x))))
 
-                ver_num = int(sorted_dirs[-1]) + 1
+        #         ver_num = int(sorted_dirs[-1]) + 1
                 
-                save_path = os.path.join(save_path,f"{ver_num}")
-                os.makedirs(save_path)
-            else:
-                save_path = os.path.join(save_path,"0")
-                os.makedirs(save_path)
+        #         save_path = os.path.join(save_path,f"{ver_num}")
+        #         os.makedirs(save_path)
+        #     else:
+        #         save_path = os.path.join(save_path,"0")
+        #         os.makedirs(save_path)
                 
-            checkpoint_filename = os.path.join(save_path, "checkpoint.pkl")
+        #     checkpoint_filename = os.path.join(save_path, "checkpoint.pkl")
 
-            model = self.init_model()
-            model = nn.DataParallel(model)
+        #     model = self.init_model()
+        #     model = nn.DataParallel(model)
 
-            dataloader_dict = self.init_dataloader(fold)
+        #     dataloader_dict = self.init_dataloader(fold)
+        
+        save_path = os.path.join(self.model_save_path, self.model_name)
+        self.load_best_at_each_epoch = str(self.load_best_at_each_epoch)
+        checkpoint_load_path = self.load_best_at_each_epoch + "/0"
+        
+        if os.path.exists(save_path+"/0"):
+            dirs_list = os.listdir(save_path)
+
+            sorted_dirs = sorted(dirs_list, key=lambda x: int(''.join(filter(str.isdigit, x))))
+
+            ver_num = int(sorted_dirs[-1]) + 1
             
+            save_path = os.path.join(save_path,f"{ver_num}")
+            os.makedirs(save_path)
+        else:
+            save_path = os.path.join(save_path,"0")
+            os.makedirs(save_path)
+            
+        checkpoint_filename = os.path.join(save_path, "checkpoint.pkl")
+
+        model = self.init_model()
+        model = nn.DataParallel(model)
+        
+        data_dict_fold, mean_std_info = self.init_arranger()
+        
+        for fold, dataloader_dict in enumerate(data_dict_fold):
+            dataloader_dict = self.init_dataloader(dataloader_dict, mean_std_info, fold)
+        
             # 파라미터가 다름
             if "jca" in self.args.experiment_name:
                 trainer = ABAW2Trainer(model, model_name=self.model_name, learning_rate=self.learning_rate, subseq_len = self.subseq_length,
