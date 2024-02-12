@@ -130,8 +130,15 @@ class Experiment(object):
             self.subseq_length = self.args.subseq_length        
         
             self.fusion_model = CAM().cuda()
+            
+        from datetime import datetime
 
-        self.model_name = self.experiment_name + "_" + args.model_name + "_" + self.modality[
+        now = datetime.now()
+        now_date = now.strftime('%Y%m%d_%H%M%S')
+        
+        
+
+        self.model_name = now_date + "_" + self.experiment_name + "_" + args.model_name + "_" + self.modality[
             0] + "_" + self.train_emotion + "_" + args.head + "_bs_" + str(self.batch_size) + "_lr_" + str(
             self.learning_rate) + "_mlr_" + str(self.min_learning_rate) + "_" + self.optim + '_' + self.stamp
 
@@ -268,11 +275,11 @@ class Experiment(object):
         dataloader_fold, dataloader_test, mean_std_info = self.init_arranger()
 
         # training
-        for fold, dataloader_dict in enumerate(dataloader_fold):
+        for split_num, dataloader_dict in enumerate(dataloader_fold):
             dataloader_dict = self.init_dataloader(dataloader_dict, mean_std_info)
             
             if not trainer.fit_finished:
-                trainer.fit(dataloader_dict, num_epochs=self.num_epochs, min_num_epochs=self.min_num_epochs,
+                trainer.fit(dataloader_dict, split_num=split_num, num_epochs=self.num_epochs, min_num_epochs=self.min_num_epochs,
                             save_model=True, parameter_controller=parameter_controller,
                             checkpoint_controller=checkpoint_controller)
                 

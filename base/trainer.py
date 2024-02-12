@@ -135,7 +135,8 @@ class ABAW2Trainer(object):
     def test(
             self,
             data_to_load,
-            output_save_path
+            output_save_path,
+            train_mode=False
     ):
         if self.verbose:
             print("------")
@@ -149,7 +150,8 @@ class ABAW2Trainer(object):
     def fit(
             self,
             data_to_load,
-            num_epochs=100,
+            split_num,
+            num_epochs=30,
             min_num_epochs=10,
             checkpoint_controller=None,
             parameter_controller=None,
@@ -260,7 +262,7 @@ class ABAW2Trainer(object):
                 print("------")
 
             checkpoint_controller.save_log_to_csv(
-                epoch, train_record_dict['overall'], validate_record_dict['overall'])
+                epoch, split_num, train_record_dict['overall'], validate_record_dict['overall'])
 
             # Early stopping controller.
             if self.early_stopping and epoch > min_num_epochs:
@@ -275,12 +277,10 @@ class ABAW2Trainer(object):
             self.scheduler.step(validate_ccc)
             self.start_epoch = epoch + 1
 
-
-            print("self.load_best_at_each_epoch : ", self.load_best_at_each_epoch)
             if self.load_best_at_each_epoch:
-                checkpoint = torch.load(self.load_best_at_each_epoch + "/0" + "/checkpoint.pkl")
-                self.model.load_state_dict(checkpoint['model_weights'])
-                print("self.model.load_state_dict(checkpoint['model_weights']) :", self.model.load_state_dict(checkpoint['model_weights']))
+                # checkpoint = torch.load(self.load_best_at_each_epoch + "/0" + "/checkpoint.pkl")
+                self.model.load_state_dict(self.best_epoch_info['model_weights'])
+                # print("self.model.load_state_dict(checkpoint['model_weights']) :", self.model.load_state_dict(checkpoint['model_weights']))
 
             checkpoint_controller.save_checkpoint(self, parameter_controller, self.save_path)
 
@@ -416,7 +416,7 @@ class ABAW2Trainer(object):
 
         return epoch_loss, epoch_result_dict
 
-    def loop_test(self, data_loader, output_save_path):
+    def loop_test(self, data_loader, output_save_path, train_mode=False):
 
         output_handler = ContinuousOutputHandlerNPYTrial(self.emotional_dimension)
         continuous_label_handler = ContinuousOutputHandlerNPYTrial(self.emotional_dimension)

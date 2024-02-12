@@ -101,9 +101,9 @@ if __name__ == '__main__':
 
     parser.add_argument('-learning_rate', default=1e-4, type=float, help='The initial learning rate.')
     parser.add_argument('-min_learning_rate', default=1e-6, type=float, help='The minimum learning rate.')
-    parser.add_argument('-num_epochs', default=100, type=int, help='The total of epochs to run during training.')
+    parser.add_argument('-num_epochs', default=30, type=int, help='The total of epochs to run during training.')
     parser.add_argument('-min_num_epochs', default=0, type=int, help='The minimum epoch to run at least.')
-    parser.add_argument('-early_stopping', default=20, type=int,
+    parser.add_argument('-early_stopping', default=7, type=int,
                         help='If no improvement, the number of epoch to run before halting the training')
     
     

@@ -21,10 +21,10 @@ class Checkpointer(object):
 
         self.columns = []
 
-    def save_log_to_csv(self, epoch, mean_train_record, mean_validate_record):
+    def save_log_to_csv(self, split_num, epoch, mean_train_record, mean_validate_record):
         num_layers_to_update = len(self.trainer.optimizer.param_groups[0]['params'])
 
-        csv_records = [time.time(), epoch, int(self.trainer.best_epoch_info['epoch']), num_layers_to_update,
+        csv_records = [time.time(), split_num, epoch, int(self.trainer.best_epoch_info['epoch']), num_layers_to_update,
                        self.trainer.optimizer.param_groups[0]['lr'], self.trainer.train_losses[-1],
                        self.trainer.validate_losses[-1]]
 
@@ -75,7 +75,9 @@ class Checkpointer(object):
         df_config = pd.DataFrame(data=config)
         df_config.to_csv(self.trainer.csv_filename, mode='a', index=False)
 
-        self.columns = ['time', 'epoch', 'best_epoch', 'layer_to_update', 'lr',
+        # self.columns = ['time', 'epoch', 'best_epoch', 'layer_to_update', 'lr',
+        #                 'tr_loss', 'val_loss']
+        self.columns = ['time', 'fold', 'epoch', 'best_epoch', 'layer_to_update', 'lr',
                         'tr_loss', 'val_loss']
 
         if self.trainer.head == "single-headed":
