@@ -202,8 +202,8 @@ class my_2d1ddy(nn.Module):
         num_batches, length, channel, width, height = x.shape
         x = x.view(-1, channel, width, height)
         x = self.spatial(x)
-        if np.isnan(x.cpu().detach()).any():
-            print("after spatial backbone: ", x)
+        # if np.isnan(x.cpu().detach()).any():
+        #     print("after spatial backbone: ", x)
         
         _, feature_dim = x.shape
         x = x.view(num_batches, length, feature_dim).transpose(1, 2).contiguous()
@@ -223,15 +223,15 @@ class my_2d1ddy(nn.Module):
         x2 = self.temporal2(x2).transpose(1, 2).contiguous()
         #x3 = self.temporal3(x3).transpose(1, 2).contiguous()
         #x4 = self.temporal4(x4).transpose(1, 2).contiguous()
-        if np.isnan(x2.cpu().detach()).any():
-            print("after temporal2: ", x2)
+        # if np.isnan(x2.cpu().detach()).any():
+        #     print("after temporal2: ", x2)
         
 
         x0 = self.encoder1(x)
         x1 = self.encoder2(x1.contiguous().view(num_batches * length, -1))
         x2 = self.encoder3(x2.contiguous().view(num_batches * length, -1))
-        if np.isnan(x2.cpu().detach()).any():
-            print("after encoder: ", x2)
+        # if np.isnan(x2.cpu().detach()).any():
+        #     print("after encoder: ", x2)
 
         xq0 = self.encoderQ1(x)
         xq1 = self.encoderQ2(x1.contiguous().view(num_batches * length, -1))
