@@ -245,43 +245,43 @@ class ABAW2_VA_Dataset(Dataset):
                 ])
 
         if "mfcc" in self.modality:
-            self.mfcc_transforms = transforms.Compose([
+        #     self.mfcc_transforms = transforms.Compose([
+        #             transforms.ToTensor(),
+        #             transforms.Normalize(mean=self.mean_std_info["mfcc"][self.fold][self.partition]['mean'],
+        #                                 std=self.mean_std_info["mfcc"][self.fold][self.partition]['std']),
+        #         ])
+            try:
+                self.mfcc_transforms = transforms.Compose([
                     transforms.ToTensor(),
-                    transforms.Normalize(mean=self.mean_std_info["mfcc"][self.fold][self.partition]['mean'],
-                                        std=self.mean_std_info["mfcc"][self.fold][self.partition]['std']),
+                    transforms.Normalize(mean=self.mean_std_info["mfcc"][self.fold]['Train_Set']['mean'],
+                                        std=self.mean_std_info["mfcc"][self.fold]['Train_Set']['std']),
                 ])
-            # try:
-            #     self.mfcc_transforms = transforms.Compose([
-            #         transforms.ToTensor(),
-            #         transforms.Normalize(mean=self.mean_std_info["mfcc"][self.fold]['Train_Set']['mean'],
-            #                             std=self.mean_std_info["mfcc"][self.fold]['Train_Set']['std']),
-            #     ])
-            # except:
-            #     self.mfcc_transforms = transforms.Compose([
-            #         transforms.ToTensor(),
-            #         transforms.Normalize(mean=self.mean_std_info["mfcc"][self.fold]['Validation_Set']['mean'],
-            #                             std=self.mean_std_info["mfcc"][self.fold]['Validation_Set']['std']),
-            #     ])
+            except:
+                self.mfcc_transforms = transforms.Compose([
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=self.mean_std_info["mfcc"][self.fold]['Validation_Set']['mean'],
+                                        std=self.mean_std_info["mfcc"][self.fold]['Validation_Set']['std']),
+                ])
                 
 
         if "vggish" in self.modality:
-            self.vggish_transforms = transforms.Compose([
-                    transforms.ToTensor(),
-                    transforms.Normalize(mean=self.mean_std_info["vggish"][self.fold][self.partition]['mean'],
-                                        std=self.mean_std_info["vggish"][self.fold][self.partition]['std']),
-                ])
-            # try:
-            #     self.vggish_transforms = transforms.Compose([
+            # self.vggish_transforms = transforms.Compose([
             #         transforms.ToTensor(),
-            #         transforms.Normalize(mean=self.mean_std_info["vggish"][self.fold]['Train_Set']['mean'],
-            #                             std=self.mean_std_info["vggish"][self.fold]['Train_Set']['std']),
+            #         transforms.Normalize(mean=self.mean_std_info["vggish"][self.fold][self.partition]['mean'],
+            #                             std=self.mean_std_info["vggish"][self.fold][self.partition]['std']),
             #     ])
-            # except:
-            #     self.vggish_transforms = transforms.Compose([
-            #         transforms.ToTensor(),
-            #         transforms.Normalize(mean=self.mean_std_info["vggish"][self.fold]['Validation_Set']['mean'],
-            #                             std=self.mean_std_info["vggish"][self.fold]['Validation_Set']['std']),
-            #     ])                
+            try:
+                self.vggish_transforms = transforms.Compose([
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=self.mean_std_info["vggish"][self.fold]['Train_Set']['mean'],
+                                        std=self.mean_std_info["vggish"][self.fold]['Train_Set']['std']),
+                ])
+            except:
+                self.vggish_transforms = transforms.Compose([
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=self.mean_std_info["vggish"][self.fold]['Validation_Set']['mean'],
+                                        std=self.mean_std_info["vggish"][self.fold]['Validation_Set']['std']),
+                ])                
                 
         torch.cuda.empty_cache()
 

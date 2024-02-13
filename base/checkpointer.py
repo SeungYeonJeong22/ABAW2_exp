@@ -77,7 +77,7 @@ class Checkpointer(object):
 
         # self.columns = ['time', 'epoch', 'best_epoch', 'layer_to_update', 'lr',
         #                 'tr_loss', 'val_loss']
-        self.columns = ['time', 'fold', 'epoch', 'best_epoch', 'layer_to_update', 'lr',
+        self.columns = ['time', 'split_num', 'epoch', 'best_epoch', 'layer_to_update', 'lr',
                         'tr_loss', 'val_loss']
 
         if self.trainer.head == "single-headed":

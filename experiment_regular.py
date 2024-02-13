@@ -210,43 +210,58 @@ class Experiment(object):
         #     dataloader_dict = {'train': train_loader, 'validate': validate_loader}       
             
         return dataloader_dict
+    
+    def mkdir_splitname(self, split_num):
+        save_path = os.path.join(self.model_save_path, self.model_name, f"split_num_{split_num}")
+        self.load_best_at_each_epoch = str(self.load_best_at_each_epoch)
+        os.makedirs(save_path)
+            
+        checkpoint_filename = os.path.join(save_path, "checkpoint.pkl")
+        
+        return save_path, checkpoint_filename
+
 
     def experiment(self):
         criterion = CCCLoss()
         
-        save_path = os.path.join(self.model_save_path, self.model_name)
-        self.load_best_at_each_epoch = str(self.load_best_at_each_epoch)
-        checkpoint_load_path = self.load_best_at_each_epoch + "/0"
+        # save_path = os.path.join(self.model_save_path, self.model_name)
+        # self.load_best_at_each_epoch = str(self.load_best_at_each_epoch)
+        # checkpoint_load_path = self.load_best_at_each_epoch + "/0"
         
-        if os.path.exists(save_path+"/0"):
-            dirs_list = os.listdir(save_path)
+        # if os.path.exists(save_path+"/0"):
+        #     dirs_list = os.listdir(save_path)
 
-            sorted_dirs = sorted(dirs_list, key=lambda x: int(''.join(filter(str.isdigit, x))))
+        #     sorted_dirs = sorted(dirs_list, key=lambda x: int(''.join(filter(str.isdigit, x))))
 
-            ver_num = int(sorted_dirs[-1]) + 1
+        #     ver_num = int(sorted_dirs[-1]) + 1
             
-            save_path = os.path.join(save_path,f"{ver_num}")
-            os.makedirs(save_path)
-        else:
-            save_path = os.path.join(save_path,"0")
-            os.makedirs(save_path)
+        #     save_path = os.path.join(save_path,f"{ver_num}")
+        #     os.makedirs(save_path)
+        # else:
+        #     save_path = os.path.join(save_path,"0")
+        #     os.makedirs(save_path)
             
-        checkpoint_filename = os.path.join(save_path, "checkpoint.pkl")
+        # checkpoint_filename = os.path.join(save_path, "checkpoint.pkl")
 
         model = self.init_model()
-        model = nn.DataParallel(model, device_ids = [1, 0]).cuda()
+        model = nn.DataParallel(model, device_ids = [1,0,2,3]).cuda()
+        
+        dataloader_fold, dataloader_test, mean_std_info = self.init_arranger()
+        
+        for split_num, dataloader_dict in enumerate(dataloader_fold):
+            save_path, checkpoint_filename = self.mkdir_splitname(split_num)
     
-        # 파라미터가 다름
-        if "ABAW2" in self.args.experiment_name:
-            # ABAW2
-            trainer = ABAW2Trainer(model, model_name=self.model_name, learning_rate=self.learning_rate,
-                                min_learning_rate=self.min_learning_rate,
-                                metrics=self.metrics, save_path=save_path, early_stopping=self.early_stopping,
-                                train_emotion=self.train_emotion, patience=self.patience, factor=self.factor,
-                                emotional_dimension=self.emotion_dimension, head=self.head, max_epoch=self.num_epochs,
-                                load_best_at_each_epoch=self.load_best_at_each_epoch, window_length=self.window_length,
-                                milestone=self.milestone, criterion=criterion, verbose=True, save_plot=self.save_plot,
-                                optimizer=self.optim, device=self.device)       
+            # 파라미터가 다름
+            if "ABAW2" in self.args.experiment_name:
+                # ABAW2
+                trainer = ABAW2Trainer(model, model_name=self.model_name, learning_rate=self.learning_rate,
+                                    min_learning_rate=self.min_learning_rate,
+                                    metrics=self.metrics, save_path=save_path, early_stopping=self.early_stopping,
+                                    train_emotion=self.train_emotion, patience=self.patience, factor=self.factor,
+                                    emotional_dimension=self.emotion_dimension, head=self.head, max_epoch=self.num_epochs,
+                                    load_best_at_each_epoch=self.load_best_at_each_epoch, window_length=self.window_length,
+                                    milestone=self.milestone, criterion=criterion, verbose=True, save_plot=self.save_plot,
+                                    optimizer=self.optim, device=self.device)
             
         # else:
         #     #JCA
@@ -259,23 +274,39 @@ class Experiment(object):
         #         milestone=self.milestone, criterion=criterion, verbose=True, save_plot=self.save_plot,
         #         fold=fold, optimizer=self.optim, cam=self.fusion_model, device=self.device)
 
-        parameter_controller = ParamControl(trainer, gradual_release=self.gradual_release,
-                                            release_count=self.release_count, backbone_mode=self.backbone_mode)
 
-        checkpoint_controller = Checkpointer(checkpoint_filename, trainer, parameter_controller, resume=self.resume)
+        ########
+        # parameter_controller = ParamControl(trainer, gradual_release=self.gradual_release,
+        #                                     release_count=self.release_count, backbone_mode=self.backbone_mode)
 
-        if self.resume:
-            trainer, parameter_controller = checkpoint_controller.load_checkpoint()
-        else:
-            checkpoint_controller.init_csv_logger(self.args, self.config)
+        # checkpoint_controller = Checkpointer(checkpoint_filename, trainer, parameter_controller, resume=self.resume)
+
+        # if self.resume:
+        #     trainer, parameter_controller = checkpoint_controller.load_checkpoint()
+        # else:
+        #     checkpoint_controller.init_csv_logger(self.args, self.config)
 
 
         # datatloader_fold: kfold 적용된 train/valid fold set
         # dataloader_test: kfold 적용안된 test set
-        dataloader_fold, dataloader_test, mean_std_info = self.init_arranger()
+        # dataloader_fold, dataloader_test, mean_std_info = self.init_arranger()
 
         # training
-        for split_num, dataloader_dict in enumerate(dataloader_fold):
+        # for split_num, dataloader_dict in enumerate(dataloader_fold):
+            
+            parameter_controller = ParamControl(trainer, gradual_release=self.gradual_release,
+                                                release_count=self.release_count, backbone_mode=self.backbone_mode)
+
+            checkpoint_controller = Checkpointer(checkpoint_filename, trainer, parameter_controller, resume=self.resume)
+
+            if self.resume:
+                trainer, parameter_controller = checkpoint_controller.load_checkpoint()
+            else:
+                checkpoint_controller.init_csv_logger(self.args, self.config)            
+            
+            
+            
+            
             dataloader_dict = self.init_dataloader(dataloader_dict, mean_std_info)
             
             if not trainer.fit_finished:

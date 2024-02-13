@@ -244,8 +244,9 @@ class ABAW2Trainer(object):
 
             if self.verbose:
                 print(
-                    "\n Fold {:2} Epoch {:2} in {:.0f}s || Train loss={:.3f} | Val loss={:.3f} | LR={:.1e} | Release_count={} | best={} | "
+                    "\n Split: {:2} Fold {:2} Epoch {:2} in {:.0f}s || Train loss={:.3f} | Val loss={:.3f} | LR={:.1e} | Release_count={} | best={} | "
                     "improvement={}-{}".format(
+                        split_num,
                         self.fold,
                         epoch + 1,
                         time.time() - time_epoch_start,
@@ -357,17 +358,9 @@ class ABAW2Trainer(object):
                 visual_feats = torch.empty((batch, seq_len, 25088), dtype=inputs.dtype, device = inputs.device)
                 aud_feats = torch.empty((batch, seq_len, 512), dtype=inputs.dtype, device = inputs.device)            
                 
-                # print("inputs.shape : ", inputs.shape)
                 if len(X.keys())>1:
                     for i in range(batch):
-                        # print("video shape : ", inputs.shape)
-                        # print("audio shape : ", inputs3.shape)
-                        # inputs_vid = inputs[i, :, :, :,:,:]
-                        # inputs_vid = inputs_vid.view([self.subseq_len, seq_len, channel, 224, 224])
-                        # print("inputs_vid.shape : ", inputs_vid.shape)
-                        
                         aud_feat, visualfeat, _ = self.model(inputs[i, :, :, :,:,:], inputs3)
-                        # aud_feat, visualfeat, _ = self.model(inputs_vid, inputs3)
                         
                         visual_feats[i,:,:] = visualfeat
                         aud_feats[i,:,:] = aud_feat

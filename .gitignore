@@ -20,3 +20,5 @@ Affwild2_processed_model2
 *.zip
 *.tar.gz
 *.txt
+*.pyc
+*.log
