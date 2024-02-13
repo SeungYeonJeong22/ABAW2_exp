@@ -263,7 +263,7 @@ class ABAW2Trainer(object):
                 print("------")
 
             checkpoint_controller.save_log_to_csv(
-                epoch, split_num, train_record_dict['overall'], validate_record_dict['overall'])
+                split_num, epoch, train_record_dict['overall'], validate_record_dict['overall'])
 
             # Early stopping controller.
             if self.early_stopping and epoch > min_num_epochs:
