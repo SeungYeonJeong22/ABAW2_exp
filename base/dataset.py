@@ -23,42 +23,42 @@ class ABAW2_VA_Arranger(object):
         
         
 
-    # @staticmethod
-    # def generate_partition_dict_for_cross_validation(partition_dict, fold):
-    #     new_partition_dict = {'Train_Set': {}, 'Validation_Set': {}, 'Target_Set': {}}
-    #     partition_pool = {**partition_dict['Train_Set'], **partition_dict['Validation_Set']}
+    @staticmethod
+    def generate_partition_dict_for_cross_validation(partition_dict, fold):
+        new_partition_dict = {'Train_Set': {}, 'Validation_Set': {}, 'Target_Set': {}}
+        partition_pool = {**partition_dict['Train_Set'], **partition_dict['Validation_Set']}
 
-    #     trials_of_train_set = list(partition_dict['Train_Set'].keys())
-    #     trials_of_original_validate_set = list(partition_dict['Validation_Set'].keys())
-    #     # trials_of_putative_test_set = list(partition_dict['Target_Set'].keys())
+        trials_of_train_set = list(partition_dict['Train_Set'].keys())
+        trials_of_original_validate_set = list(partition_dict['Validation_Set'].keys())
+        # trials_of_putative_test_set = list(partition_dict['Target_Set'].keys())
 
-    #     fold_0_trials = trials_of_train_set[slice(0, 70)]
-    #     fold_1_trials = trials_of_train_set[slice(70, 140)]
-    #     fold_2_trials = trials_of_train_set[slice(140, 210)]
-    #     fold_3_trials = trials_of_train_set[slice(210, 280)]
-    #     fold_4_trials = trials_of_train_set[slice(280, 351)]
-    #     fold_5_trials = trials_of_original_validate_set
+        fold_0_trials = trials_of_train_set[slice(0, 70)]
+        fold_1_trials = trials_of_train_set[slice(70, 140)]
+        fold_2_trials = trials_of_train_set[slice(140, 210)]
+        fold_3_trials = trials_of_train_set[slice(210, 280)]
+        fold_4_trials = trials_of_train_set[slice(280, 351)]
+        fold_5_trials = trials_of_original_validate_set
 
-    #     fold_n_trials = [
-    #         fold_0_trials,
-    #         fold_1_trials,
-    #         fold_2_trials,
-    #         fold_3_trials,
-    #         fold_4_trials,
-    #         fold_5_trials
-    #     ]
+        fold_n_trials = [
+            fold_0_trials,
+            fold_1_trials,
+            fold_2_trials,
+            fold_3_trials,
+            fold_4_trials,
+            fold_5_trials
+        ]
 
-    #     fold_index = np.roll(np.arange(len(fold_n_trials)), fold)
-    #     ordered_trials = list(itemgetter(*fold_index)(fold_n_trials))
+        fold_index = np.roll(np.arange(len(fold_n_trials)), fold)
+        ordered_trials = list(itemgetter(*fold_index)(fold_n_trials))
 
-    #     for nth_fold, trials_of_a_fold in enumerate(ordered_trials):
-    #         for trial in trials_of_a_fold:
-    #             partition = "Train_Set"
-    #             if nth_fold == len(fold_n_trials) - 1:
-    #                 partition = "Validation_Set"
-    #             new_partition_dict[partition].update({trial: partition_pool[trial]})
+        for nth_fold, trials_of_a_fold in enumerate(ordered_trials):
+            for trial in trials_of_a_fold:
+                partition = "Train_Set"
+                if nth_fold == len(fold_n_trials) - 1:
+                    partition = "Validation_Set"
+                new_partition_dict[partition].update({trial: partition_pool[trial]})
 
-    #     return new_partition_dict
+        return new_partition_dict
     
     
     @staticmethod
@@ -113,85 +113,90 @@ class ABAW2_VA_Arranger(object):
     def resample_according_to_window_and_hop_length(self, fold=4):
         partition_dict = self.dataset_info['partition']
         
-        # train / test 비율 8:2
-        partition_dict = self.split_train_test_trial(partition_dict, fold)
+        # # train / test 비율 8:2
+        # partition_dict = self.split_train_test_trial(partition_dict, fold)
 
-        sampled_list_fold = []
+        # sampled_list_fold = []
         
-        # 교수님 권장사항 valid -> train(전체 80)에 대한 25%
-        kfold = KFold(n_splits=4)
+        # # 교수님 권장사항 valid -> train(전체 80)에 대한 25%
+        # kfold = KFold(n_splits=4)
         
-        trial2idx = {}
-        for i, tr in enumerate(partition_dict['Train_Set']):
-            trial2idx[i] = tr
+        # trial2idx = {}
+        # for i, tr in enumerate(partition_dict['Train_Set']):
+        #     trial2idx[i] = tr
                 
-        # train set에서 kfold 5, train / valid 4:1
-        for train_idx, valid_idx in kfold.split(partition_dict['Train_Set']):
-            sampled_list_dict = {'Train_Set': [], 'Validation_Set': [], 'Test_Set':[]}
-            trial_count = 0
-            for train_trials_idx in train_idx:
-                partition = "Train_Set"
-                length = partition_dict['Train_Set'][trial2idx[train_trials_idx]]
-                self.custom_sampled_list(sampled_list_dict, partition, trial2idx[train_trials_idx], length)
-                trial_count += 1
-                if self.debug and trial_count >= self.debug:
-                    break
-                
-            for valid_trials_idx in valid_idx:
-                partition = "Validation_Set"
-                # partition_dict['Train_Set'] -> train에서 kfold하므로 (validation_set x)
-                length = partition_dict['Train_Set'][trial2idx[valid_trials_idx]]
-                self.custom_sampled_list(sampled_list_dict, partition, trial2idx[valid_trials_idx], length)
-                
-                trial_count += 1
-                if self.debug and trial_count >= self.debug:
-                    break                
-                    
-                    
-            # fold
-            sampled_list_fold.append(sampled_list_dict)
-            
-        # test set은 fold랑 별개
-        for test in partition_dict['Test_Set']:
-            self.custom_sampled_list(sampled_list_dict, 'Test_Set', test, length)
-        
-
-        ############# 오리지널 코드 ################
-        # for partition, trials in partition_dict.items():
+        # # train set에서 kfold 5, train / valid 4:1
+        # for train_idx, valid_idx in kfold.split(partition_dict['Train_Set']):
+        #     sampled_list_dict = {'Train_Set': [], 'Validation_Set': [], 'Test_Set':[]}
         #     trial_count = 0
-        #     for trial, length in trials.items():
-
-        #         start = 0
-        #         end = start + self.window_length
-
-        #         if end < length:
-        #             # Windows before the last one
-        #             while end < length:
-        #                 indices = np.arange(start, end)
-        #                 path = os.path.join(self.dataset_path, trial)
-        #                 sampled_list[partition].append([path, trial, indices, length])
-        #                 start = start + self.hop_length
-        #                 end = start + self.window_length
-
-        #             # The last window ends with the trial length, which ensures that no data are wasted.
-        #             start = length - self.window_length
-        #             end = length
-        #             indices = np.arange(start, end)
-        #             path = os.path.join(self.dataset_path, trial)
-        #             sampled_list[partition].append([path, trial, indices, length])
-        #         else:
-        #             end = length
-        #             indices = np.arange(start, end)
-        #             path = os.path.join(self.dataset_path, trial)
-        #             sampled_list[partition].append([path, trial, indices, length])
-
+        #     for train_trials_idx in train_idx:
+        #         partition = "Train_Set"
+        #         length = partition_dict['Train_Set'][trial2idx[train_trials_idx]]
+        #         self.custom_sampled_list(sampled_list_dict, partition, trial2idx[train_trials_idx], length)
         #         trial_count += 1
-
         #         if self.debug and trial_count >= self.debug:
         #             break
+                
+        #     for valid_trials_idx in valid_idx:
+        #         partition = "Validation_Set"
+        #         # partition_dict['Train_Set'] -> train에서 kfold하므로 (validation_set x)
+        #         length = partition_dict['Train_Set'][trial2idx[valid_trials_idx]]
+        #         self.custom_sampled_list(sampled_list_dict, partition, trial2idx[valid_trials_idx], length)
+                
+        #         trial_count += 1
+        #         if self.debug and trial_count >= self.debug:
+        #             break                
+                    
+                    
+        #     # fold
+        #     sampled_list_fold.append(sampled_list_dict)
+            
+        # # test set은 fold랑 별개
+        # for test in partition_dict['Test_Set']:
+        #     self.custom_sampled_list(sampled_list_dict, 'Test_Set', test, length)
+            
+            
+        # return sampled_list_fold, sampled_list_dict['Test_Set']
+        
+        
+        partition_dict = self.generate_partition_dict_for_cross_validation(partition_dict, fold)
+        sampled_list = {'Train_Set': [], 'Validation_Set': [], 'Target_Set': []}
 
-        # return sampled_list
-        return sampled_list_fold, sampled_list_dict['Test_Set']
+        ############ 오리지널 코드 ################
+        for partition, trials in partition_dict.items():
+            trial_count = 0
+            for trial, length in trials.items():
+
+                start = 0
+                end = start + self.window_length
+
+                if end < length:
+                    # Windows before the last one
+                    while end < length:
+                        indices = np.arange(start, end)
+                        path = os.path.join(self.dataset_path, trial)
+                        sampled_list[partition].append([path, trial, indices, length])
+                        start = start + self.hop_length
+                        end = start + self.window_length
+
+                    # The last window ends with the trial length, which ensures that no data are wasted.
+                    start = length - self.window_length
+                    end = length
+                    indices = np.arange(start, end)
+                    path = os.path.join(self.dataset_path, trial)
+                    sampled_list[partition].append([path, trial, indices, length])
+                else:
+                    end = length
+                    indices = np.arange(start, end)
+                    path = os.path.join(self.dataset_path, trial)
+                    sampled_list[partition].append([path, trial, indices, length])
+
+                trial_count += 1
+
+                if self.debug and trial_count >= self.debug:
+                    break
+
+        return sampled_list
 
 
 class ABAW2_VA_Dataset(Dataset):

@@ -150,8 +150,8 @@ class Experiment(object):
                                         debug=self.debug)
 
             # For fold = 0, it is the original partition.
-            # data_dict = arranger.resample_according_to_window_and_hop_length(fold)
-            tra_val_fold, test_set = arranger.resample_according_to_window_and_hop_length(fold)
+            data_dict = arranger.resample_according_to_window_and_hop_length(fold)
+            # tra_val_fold, test_set = arranger.resample_according_to_window_and_hop_length(fold)
             
         elif self.experiment_name in "jca":
             arranger = JCA_VA_Arranger(self.dataset_path, window_length=self.window_length, hop_length=self.hop_length,
@@ -160,7 +160,8 @@ class Experiment(object):
             # For fold = 0, it is the original partition.
             tra_val_fold = arranger.resample_according_to_window_and_hop_length(fold)
             
-        return tra_val_fold, test_set, arranger.mean_std_info
+        # return tra_val_fold, test_set, arranger.mean_std_info
+        return data_dict, arranger.mean_std_info
         
 
     def init_dataloader(self, data_dict, mean_std_info, mode='train', fold=4):
@@ -224,44 +225,45 @@ class Experiment(object):
     def experiment(self):
         criterion = CCCLoss()
         
-        # save_path = os.path.join(self.model_save_path, self.model_name)
-        # self.load_best_at_each_epoch = str(self.load_best_at_each_epoch)
-        # checkpoint_load_path = self.load_best_at_each_epoch + "/0"
+        save_path = os.path.join(self.model_save_path, self.model_name)
+        self.load_best_at_each_epoch = str(self.load_best_at_each_epoch)
+        checkpoint_load_path = self.load_best_at_each_epoch + "/0"
         
-        # if os.path.exists(save_path+"/0"):
-        #     dirs_list = os.listdir(save_path)
+        if os.path.exists(save_path+"/0"):
+            dirs_list = os.listdir(save_path)
 
-        #     sorted_dirs = sorted(dirs_list, key=lambda x: int(''.join(filter(str.isdigit, x))))
+            sorted_dirs = sorted(dirs_list, key=lambda x: int(''.join(filter(str.isdigit, x))))
 
-        #     ver_num = int(sorted_dirs[-1]) + 1
+            ver_num = int(sorted_dirs[-1]) + 1
             
-        #     save_path = os.path.join(save_path,f"{ver_num}")
-        #     os.makedirs(save_path)
-        # else:
-        #     save_path = os.path.join(save_path,"0")
-        #     os.makedirs(save_path)
+            save_path = os.path.join(save_path,f"{ver_num}")
+            os.makedirs(save_path)
+        else:
+            save_path = os.path.join(save_path,"0")
+            os.makedirs(save_path)
             
-        # checkpoint_filename = os.path.join(save_path, "checkpoint.pkl")
+        checkpoint_filename = os.path.join(save_path, "checkpoint.pkl")
 
         model = self.init_model()
-        model = nn.DataParallel(model, device_ids = [1,0,2,3]).cuda()
+        model = nn.DataParallel(model, device_ids = [0,1,2,3]).cuda()
         
-        dataloader_fold, dataloader_test, mean_std_info = self.init_arranger()
+        # dataloader_fold, dataloader_test, mean_std_info = self.init_arranger()
+        data_dict, mean_std_info = self.init_arranger()
         
-        for split_num, dataloader_dict in enumerate(dataloader_fold):
-            save_path, checkpoint_filename = self.mkdir_splitname(split_num)
+        # for split_num, dataloader_dict in enumerate(dataloader_fold):
+        #     save_path, checkpoint_filename = self.mkdir_splitname(split_num)
     
-            # 파라미터가 다름
-            if "ABAW2" in self.args.experiment_name:
-                # ABAW2
-                trainer = ABAW2Trainer(model, model_name=self.model_name, learning_rate=self.learning_rate,
-                                    min_learning_rate=self.min_learning_rate,
-                                    metrics=self.metrics, save_path=save_path, early_stopping=self.early_stopping,
-                                    train_emotion=self.train_emotion, patience=self.patience, factor=self.factor,
-                                    emotional_dimension=self.emotion_dimension, head=self.head, max_epoch=self.num_epochs,
-                                    load_best_at_each_epoch=self.load_best_at_each_epoch, window_length=self.window_length,
-                                    milestone=self.milestone, criterion=criterion, verbose=True, save_plot=self.save_plot,
-                                    optimizer=self.optim, device=self.device)
+        # 파라미터가 다름
+        if "ABAW2" in self.args.experiment_name:
+            # ABAW2
+            trainer = ABAW2Trainer(model, model_name=self.model_name, learning_rate=self.learning_rate,
+                                min_learning_rate=self.min_learning_rate,
+                                metrics=self.metrics, save_path=save_path, early_stopping=self.early_stopping,
+                                train_emotion=self.train_emotion, patience=self.patience, factor=self.factor,
+                                emotional_dimension=self.emotion_dimension, head=self.head, max_epoch=self.num_epochs,
+                                load_best_at_each_epoch=self.load_best_at_each_epoch, window_length=self.window_length,
+                                milestone=self.milestone, criterion=criterion, verbose=True, save_plot=self.save_plot,
+                                optimizer=self.optim, device=self.device)
             
         # else:
         #     #JCA
@@ -306,11 +308,10 @@ class Experiment(object):
             
             
             
-            
             dataloader_dict = self.init_dataloader(dataloader_dict, mean_std_info)
             
             if not trainer.fit_finished:
-                trainer.fit(dataloader_dict, split_num=split_num, num_epochs=self.num_epochs, min_num_epochs=self.min_num_epochs,
+                trainer.fit(dataloader_dict, num_epochs=self.num_epochs, min_num_epochs=self.min_num_epochs,
                             save_model=True, parameter_controller=parameter_controller,
                             checkpoint_controller=checkpoint_controller)
                 

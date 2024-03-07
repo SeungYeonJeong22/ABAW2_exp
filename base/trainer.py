@@ -150,7 +150,7 @@ class ABAW2Trainer(object):
     def fit(
             self,
             data_to_load,
-            split_num,
+            # split_num,
             num_epochs=30,
             min_num_epochs=10,
             checkpoint_controller=None,
@@ -246,7 +246,7 @@ class ABAW2Trainer(object):
                 print(
                     "\n Split: {:2} Fold {:2} Epoch {:2} in {:.0f}s || Train loss={:.3f} | Val loss={:.3f} | LR={:.1e} | Release_count={} | best={} | "
                     "improvement={}-{}".format(
-                        split_num,
+                        # split_num,
                         self.fold,
                         epoch + 1,
                         time.time() - time_epoch_start,
