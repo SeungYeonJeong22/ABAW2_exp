@@ -24,7 +24,6 @@ class ABAW2Trainer(object):
         self.args = kwargs
         self.device = device
         
-        # self.model = nn.DataParallel(model)
         self.model = model.to(device)
         self.model_name = model_name
         self.save_path = save_path
@@ -150,7 +149,7 @@ class ABAW2Trainer(object):
     def fit(
             self,
             data_to_load,
-            # split_num,
+            # 
             num_epochs=30,
             min_num_epochs=10,
             checkpoint_controller=None,
@@ -244,9 +243,9 @@ class ABAW2Trainer(object):
 
             if self.verbose:
                 print(
-                    "\n Split: {:2} Fold {:2} Epoch {:2} in {:.0f}s || Train loss={:.3f} | Val loss={:.3f} | LR={:.1e} | Release_count={} | best={} | "
+                    "\n Fold {:2} Epoch {:2} in {:.0f}s || Train loss={:.3f} | Val loss={:.3f} | LR={:.1e} | Release_count={} | best={} | "
                     "improvement={}-{}".format(
-                        # split_num,
+                        # 
                         self.fold,
                         epoch + 1,
                         time.time() - time_epoch_start,
@@ -263,7 +262,7 @@ class ABAW2Trainer(object):
                 print("------")
 
             checkpoint_controller.save_log_to_csv(
-                split_num, epoch, train_record_dict['overall'], validate_record_dict['overall'])
+                 epoch, train_record_dict['overall'], validate_record_dict['overall'])
 
             # Early stopping controller.
             if self.early_stopping and epoch > min_num_epochs:

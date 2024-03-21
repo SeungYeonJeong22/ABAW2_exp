@@ -145,10 +145,8 @@ if __name__ == '__main__':
     parser.add_argument('-subseq_length', default=8, type=int)
     parser.add_argument('-stride', default=1, type=int)
     parser.add_argument('-dilation', default=4, type=int)
-    parser.add_argument('-flag', default="train", type=str)    
-
-    
-    
+    parser.add_argument('-flag', default="train", type=str)
+    parser.add_argument('-continual_fold', default=0, type=int)
     
     # JCA argument
     # parser.add_argument('-dataset_path', default="Affwild2_processed_model2", type=str,
@@ -165,8 +163,6 @@ if __name__ == '__main__':
     # parser.add_argument('-flag', default="train", type=str)
     # parser.add_argument('-hop_length', default=64//8, type=int, help='The step size or stride to move the window.')    
     
-        
-    
 
     args = parser.parse_args()
     sys.path.insert(0, args.python_package_path)
@@ -175,6 +171,27 @@ if __name__ == '__main__':
         from test import Experiment
     else:
         from experiment_regular import Experiment
+    
+    continual_directory_path = "20240309_135213_ABAW2_2d1d_frame_both_mh_bs_8_lr_0.0001_mlr_1e-06_Adam_test"
+    continually_experiment_root_path = os.path.join(args.model_save_path, continual_directory_path)
+    continual_fold = args.continual_fold
+    
+    if continual_fold == 0:
+        folds = [i for i in range(5)]
+        resume=0
+    else:
+        folds = [i for i in range(continual_fold, 5)]
+        args.resume=1
         
-    experiment_handler = Experiment(args)
-    experiment_handler.experiment()
+    os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
+    
+    for fold in folds:
+        experiment_handler = Experiment(args, fold)
+        
+        if not args.continual_fold:
+            save_path = os.path.join(experiment_handler.model_save_path, experiment_handler.model_name)
+        else:
+            save_path = os.path.join(continually_experiment_root_path)
+            resume = 1
+        
+        experiment_handler.experiment(save_path, fold)
