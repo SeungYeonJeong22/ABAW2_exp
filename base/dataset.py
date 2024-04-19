@@ -6,11 +6,9 @@ from base.transforms3D import *
 
 from torchvision.transforms import transforms
 import numpy as np
+import random
 from operator import itemgetter
 from sklearn.model_selection import KFold
-
-import random
-
 
 class ABAW2_VA_Arranger(object):
     def __init__(self, dataset_path, window_length=300, hop_length=300, debug=0):
@@ -20,8 +18,6 @@ class ABAW2_VA_Arranger(object):
         self.window_length = window_length
         self.hop_length = hop_length
         self.debug = debug
-        
-        
 
     @staticmethod
     def generate_partition_dict_for_cross_validation(partition_dict, fold):
@@ -30,7 +26,7 @@ class ABAW2_VA_Arranger(object):
 
         trials_of_train_set = list(partition_dict['Train_Set'].keys())
         trials_of_original_validate_set = list(partition_dict['Validation_Set'].keys())
-        # trials_of_putative_test_set = list(partition_dict['Target_Set'].keys())
+        trials_of_putative_test_set = list(partition_dict['Test_Set'].keys())
 
         fold_0_trials = trials_of_train_set[slice(0, 70)]
         fold_1_trials = trials_of_train_set[slice(70, 140)]
@@ -58,117 +54,55 @@ class ABAW2_VA_Arranger(object):
                     partition = "Validation_Set"
                 new_partition_dict[partition].update({trial: partition_pool[trial]})
 
+        new_partition_dict['Test_Set'] = partition_dict['Test_Set']
         return new_partition_dict
-    
     
     @staticmethod
-    def split_train_test_trial(partition_dict, fold=None):
-        random.seed(0)
-        new_partition_dict = {'Train_Set': {}, 'Test_Set': {}}
+    def split_train_test_trial(partition_dict, mode='Test', seed=0):
+        random.seed(seed)
         
-        # 전체 데이터에서 20%만 테스트로써 사용
-        partition_dict['Train_Set'].update(partition_dict['Validation_Set'])
-        partition_dict = partition_dict['Train_Set']
-        
-        test = random.sample(partition_dict.keys(), int(len(partition_dict.keys()) * 0.2))
-        train = [t for t in partition_dict.keys() if not t in test]
-        
-        for trial_train in train:
-            new_partition_dict["Train_Set"].update({trial_train:partition_dict[trial_train]})
+        # Train_Test를 나눌 때
+        if mode == 'Test':
+            new_partition_dict = {'Train_Set': {}, 'Test_Set': {}}
             
-        for trial_test in test:
-            new_partition_dict["Test_Set"].update({trial_test:partition_dict[trial_test]})
+            # 전체 데이터로 모아서
+            partition_dict['Train_Set'].update(partition_dict['Validation_Set'])
+            partition_dict = partition_dict['Train_Set']
             
-        return new_partition_dict
-    
+            # 20%만 테스트로 사용
+            test = random.sample(partition_dict.keys(), int(len(partition_dict.keys()) * 0.2))
+            train = [t for t in partition_dict.keys() if not t in test]
+            
+            for trial_train in train:
+                new_partition_dict["Train_Set"].update({trial_train:partition_dict[trial_train]})
+                
+            for trial_test in test:
+                new_partition_dict["Test_Set"].update({trial_test:partition_dict[trial_test]})
+                
+            return new_partition_dict
+        
+        # Train_Valid 나눌 때
+        elif mode == 'Valid':
+            new_partition_dict = {'Train_Set': {}, 'Validation_Set': {}}
+            
+            # 20%만 테스트로 사용
+            valid = random.sample(partition_dict.keys(), int(len(partition_dict.keys()) * 0.2))
+            train = [t for t in partition_dict.keys() if not t in valid]
+            
+            for trial_train in train:
+                new_partition_dict["Train_Set"].update({trial_train:partition_dict[trial_train]})
+                
+            for trial_valid in valid:
+                new_partition_dict["Validation_Set"].update({trial_valid:partition_dict[trial_valid]})
+                
+            partition_dict = new_partition_dict
+                
+            return partition_dict            
+            
     
     def custom_sampled_list(self, sampled_list, partition, trial, length):
         start = 0
         end = start + self.window_length
-
-        if end < length:
-            # Windows before the last one
-            while end < length:
-                indices = np.arange(start, end)
-                path = os.path.join(self.dataset_path, trial)
-                sampled_list[partition].append([path, trial, indices, length])
-                start = start + self.hop_length
-                end = start + self.window_length
-
-            # The last window ends with the trial length, which ensures that no data are wasted.
-            start = length - self.window_length
-            end = length
-            indices = np.arange(start, end)
-            path = os.path.join(self.dataset_path, trial)
-            sampled_list[partition].append([path, trial, indices, length])
-        else:
-            end = length
-            indices = np.arange(start, end)
-            path = os.path.join(self.dataset_path, trial)
-            sampled_list[partition].append([path, trial, indices, length])
-            
-        return sampled_list
-
-        
-    def resample_according_to_window_and_hop_length(self, fold=4):
-        partition_dict = self.dataset_info['partition']
-        
-        # # train / test 비율 8:2
-        # partition_dict = self.split_train_test_trial(partition_dict, fold)
-
-        # sampled_list_fold = []
-        
-        # # 교수님 권장사항 valid -> train(전체 80)에 대한 25%
-        # kfold = KFold(n_splits=4)
-        
-        # trial2idx = {}
-        # for i, tr in enumerate(partition_dict['Train_Set']):
-        #     trial2idx[i] = tr
-                
-        # # train set에서 kfold 5, train / valid 4:1
-        # for train_idx, valid_idx in kfold.split(partition_dict['Train_Set']):
-        #     sampled_list_dict = {'Train_Set': [], 'Validation_Set': [], 'Test_Set':[]}
-        #     trial_count = 0
-        #     for train_trials_idx in train_idx:
-        #         partition = "Train_Set"
-        #         length = partition_dict['Train_Set'][trial2idx[train_trials_idx]]
-        #         self.custom_sampled_list(sampled_list_dict, partition, trial2idx[train_trials_idx], length)
-        #         trial_count += 1
-        #         if self.debug and trial_count >= self.debug:
-        #             break
-                
-        #     for valid_trials_idx in valid_idx:
-        #         partition = "Validation_Set"
-        #         # partition_dict['Train_Set'] -> train에서 kfold하므로 (validation_set x)
-        #         length = partition_dict['Train_Set'][trial2idx[valid_trials_idx]]
-        #         self.custom_sampled_list(sampled_list_dict, partition, trial2idx[valid_trials_idx], length)
-                
-        #         trial_count += 1
-        #         if self.debug and trial_count >= self.debug:
-        #             break                
-                    
-                    
-        #     # fold
-        #     sampled_list_fold.append(sampled_list_dict)
-            
-        # # test set은 fold랑 별개
-        # for test in partition_dict['Test_Set']:
-        #     self.custom_sampled_list(sampled_list_dict, 'Test_Set', test, length)
-            
-            
-        # return sampled_list_fold, sampled_list_dict['Test_Set']
-        
-        
-        partition_dict = self.generate_partition_dict_for_cross_validation(partition_dict, fold)
-        sampled_list = {'Train_Set': [], 'Validation_Set': [], 'Target_Set': []}
-
-        ############ 오리지널 코드 ################
-        for partition, trials in partition_dict.items():
-            trial_count = 0
-            for trial, length in trials.items():
-
-                start = 0
-                end = start + self.window_length
 
         if end < length:
             # Windows before the last one
@@ -322,15 +256,10 @@ class ABAW2_VA_Dataset(Dataset):
                     GroupCenterCrop(40),
                     Stack(),
                     ToTorchFormatTensor(),
-                    normalize 
+                    normalize
                 ])
 
         if "mfcc" in self.modality:
-        #     self.mfcc_transforms = transforms.Compose([
-        #             transforms.ToTensor(),
-        #             transforms.Normalize(mean=self.mean_std_info["mfcc"][self.fold][self.partition]['mean'],
-        #                                 std=self.mean_std_info["mfcc"][self.fold][self.partition]['std']),
-        #         ])
             try:
                 self.mfcc_transforms = transforms.Compose([
                     transforms.ToTensor(),
@@ -346,11 +275,6 @@ class ABAW2_VA_Dataset(Dataset):
                 
 
         if "vggish" in self.modality:
-            # self.vggish_transforms = transforms.Compose([
-            #         transforms.ToTensor(),
-            #         transforms.Normalize(mean=self.mean_std_info["vggish"][self.fold][self.partition]['mean'],
-            #                             std=self.mean_std_info["vggish"][self.fold][self.partition]['std']),
-            #     ])
             try:
                 self.vggish_transforms = transforms.Compose([
                     transforms.ToTensor(),
@@ -367,11 +291,10 @@ class ABAW2_VA_Dataset(Dataset):
         torch.cuda.empty_cache()
 
 
-
     @staticmethod
     def load_data(directory, indices, filename):
         filename = os.path.join(directory, filename)
-        frames = np.load(filename, allow_pickle=True)[indices]
+        frames = np.load(filename, mmap_mode='c')[indices]
         return frames
 
     def __getitem__(self, index):
@@ -398,17 +321,7 @@ class ABAW2_VA_Dataset(Dataset):
                 mfcc = np.zeros((self.window_length, 39), dtype=np.float32)
                 mfcc[indices] = self.load_data(path, indices, "mfcc.npy")
             else:
-                # mfcc = self.load_data(path, indices, "mfcc.npy").astype(np.float32)
-                try:
-                    mfcc = self.load_data(path, indices, "mfcc.npy").astype(np.float32)
-                except: 
-                    mfcc_data = self.load_data(path, indices, "mfcc.npy")
-                    for idx, i in enumerate(mfcc_data):
-                        for idx2, j in enumerate(i):
-                            if type(j) == str:
-                                mfcc_data[idx][idx2] = np.float32(j.replace("u",""))
-                            
-                    mfcc = mfcc_data.astype(np.float32)
+                mfcc = self.load_data(path, indices, "mfcc.npy").astype(np.float32)
             mfcc = self.mfcc_transforms(mfcc)
             features.update({'mfcc': mfcc})
 
@@ -442,7 +355,7 @@ class ABAW2_VA_Dataset(Dataset):
             labels = np.concatenate(
                 (labels[self.time_delay:, :],
                  np.repeat(labels[-1, :][np.newaxis], repeats=self.time_delay, axis=0)), axis=0)
-            # print(labels.shape, indices)
+
         if len(indices) < self.window_length:
             indices = np.arange(self.window_length)
 
@@ -450,6 +363,4 @@ class ABAW2_VA_Dataset(Dataset):
 
     def __len__(self):
         return len(self.data_list)
-
-
 
