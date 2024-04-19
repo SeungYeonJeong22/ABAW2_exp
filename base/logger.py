@@ -324,17 +324,21 @@ class ContinuousMetricsCalculatorTrial(object):
     @staticmethod
     def calculator(output, label, metric):
         if metric == "rmse":
-            result = np.sqrt(((output - label) ** 2).mean())
+            try: result = np.sqrt(((output - label) ** 2).mean())
+            except: print(f"rmse Error||\n output: {output} \n label: {label}")
         elif metric == "pcc":
+            try: result = pearsonr(output, label)
+            except: print(f"pcc Error||\n output: {output} \n label: {label}")
             result = pearsonr(output, label)
         elif metric == "ccc":
-            result = ConcordanceCorrelationCoefficient.calculate_ccc(output, label)
+            try: result = ConcordanceCorrelationCoefficient.calculate_ccc(output, label)
+            except: print(f"ccc Error||\n output: {output} \n label: {label}")
         else:
             raise ValueError("Metric {} is not defined.".format(metric))
         return result
 
-    def calculate_metrics(self):
 
+    def calculate_metrics(self):
         # Load the data for three scenarios.
         # They will all be evaluated.
         trialwise_output, trialwise_continuous_label = self.get_trialwise_output_and_continuous_label()

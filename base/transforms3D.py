@@ -1,4 +1,4 @@
-
+import gc
 import torchvision
 import random
 from PIL import Image
@@ -118,10 +118,14 @@ class Stack(object):
 
     def __call__(self, img_group):
         if img_group[0].mode == 'L':
-            return np.concatenate([np.expand_dims(x, 2) for x in img_group], axis=2)
+            ret_val = np.concatenate([np.expand_dims(x, 2) for x in img_group], axis=2)
         elif img_group[0].mode == 'RGB':
-            # return np.concatenate(img_group, axis=2)
-            return np.stack(img_group, axis=0)
+            ret_val = np.stack(img_group, axis=0)
+
+        del img_group
+        gc.collect()
+
+        return ret_val
 
 
 class ToTorchFormatTensor(object):

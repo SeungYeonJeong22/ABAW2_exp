@@ -17,13 +17,13 @@ if __name__ == '__main__':
                                                                                'e.g., on Google Colab or NSCC.')
 
     # 1.2. Paths
-    parser.add_argument('-dataset_path', default='/home/zhangsu/dataset/affwild2', type=str,
+    parser.add_argument('-dataset_path', default="Affwild2_processed_ver3", type=str,
                         help='The root directory of the preprocessed dataset.')  # /scratch/users/ntu/su012/dataset/mahnob
-    parser.add_argument('-model_load_path', default='/home/zhangsu/ABAW2-attention/load', type=str,
+    parser.add_argument('-model_load_path', default='load', type=str,
                         help='The path to load the trained model, such as the backbone.')  # /scratch/users/ntu/su012/pretrained_model
-    parser.add_argument('-model_save_path', default='/home/zhangsu/ABAW2-attention/save', type=str,
+    parser.add_argument('-model_save_path', default='save', type=str,
                         help='The path to save the trained model ')  # /scratch/users/ntu/su012/trained_model
-    parser.add_argument('-python_package_path', default='/home/zhangsu/ABAW2-attention', type=str,
+    parser.add_argument('-python_package_path', default='attention', type=str,
                         help='The path to the entire repository.')
 
     # 1.3. Experiment name, and stamp, will be used to name the output files.
@@ -49,7 +49,7 @@ if __name__ == '__main__':
     # For the latter, a weight will be applied to the output to favor the selected emotion.
     parser.add_argument('-train_emotion', default="valence",
                         help='The emotion dimension to focus when updating gradient: arousal, valence, both')
-    parser.add_argument('-head', default="sh", help='Output 2 dimensions or 1? mh: multi-headed, sh: single-headed')
+    parser.add_argument('-head', default="mh", help='Output 2 dimensions or 1? mh: multi-headed, sh: single-headed')
 
     # 1.8. Whether to save the model?
     parser.add_argument('-save_model', default=1, type=int, help='Whether to save the model?')
@@ -91,15 +91,15 @@ if __name__ == '__main__':
     parser.add_argument('-cross_validation', default=1, type=int)
     parser.add_argument('-folds_to_run', default=[0], nargs="+", type=int, help='Which fold(s) to run? Each fold may take 1-2 days.')
 
-    parser.add_argument('-learning_rate', default=1e-5, type=float, help='The initial learning rate.')
+    parser.add_argument('-learning_rate', default=1e-4, type=float, help='The initial learning rate.')
     parser.add_argument('-min_learning_rate', default=1e-6, type=float, help='The minimum learning rate.')
-    parser.add_argument('-num_epochs', default=100, type=int, help='The total of epochs to run during training.')
+    parser.add_argument('-num_epochs', default=30, type=int, help='The total of epochs to run during training.')
     parser.add_argument('-min_num_epochs', default=0, type=int, help='The minimum epoch to run at least.')
     parser.add_argument('-early_stopping', default=20, type=int,
                         help='If no improvement, the number of epoch to run before halting the training')
     parser.add_argument('-window_length', default=300, type=int, help='The length in point number to windowing the data.')
     parser.add_argument('-hop_length', default=200, type=int, help='The step size or stride to move the window.')
-    parser.add_argument('-batch_size', default=8, type=int)
+    parser.add_argument('-batch_size', default=16, type=int)
 
     # 3.1. Scheduler and Parameter Control
     parser.add_argument('-patience', default=5, type=int, help='Patience for learning rate changes.')
@@ -109,6 +109,8 @@ if __name__ == '__main__':
     parser.add_argument('-milestone', default=[0], nargs="+", type=int, help='The specific epochs to do something.')
     parser.add_argument('-load_best_at_each_epoch', default=1, type=int,
                         help='Whether to load the best model state at the end of each epoch?')
+    
+    parser.add_argument('-optim', default="Adam", type=str, help='Choose Optimizer?')
 
     # 3.2. Groundtruth settings
     parser.add_argument('-time_delay', default=0, type=float,
@@ -118,6 +120,10 @@ if __name__ == '__main__':
     parser.add_argument('-metrics', default=["rmse", "pcc", "ccc"], nargs="*", help='The evaluation metrics.')
     parser.add_argument('-save_plot', default=0, type=int,
                         help='Whether to plot the session-wise output/target or not?')
+    
+    
+    parser.add_argument('-random_seed', default=0, type=int, help='random_seed values')
+    
 
     args = parser.parse_args()
     sys.path.insert(0, args.python_package_path)

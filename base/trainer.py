@@ -10,7 +10,11 @@ import torch
 from torch import optim
 from torch.nn import MSELoss
 import torch.utils.data
+from torch import nn
+from warnings import filterwarnings
+filterwarnings('ignore')
 
+import torch.autograd.profiler as profiler
 from base.logger import ContinuousOutputHandlerNPYTrial, ContinuousMetricsCalculatorTrial, ConcordanceCorrelationCoefficient, PlotHandlerTrial
 
 
@@ -18,12 +22,13 @@ class ABAW2Trainer(object):
     def __init__(self, model, model_name='2d1d', save_path=None, train_emotion='both', head='multi-headed', factor=0.1,
                  early_stopping=100, criterion=None, milestone=[0], patience=10, learning_rate=0.00001, device='cpu', num_classes=2, max_epoch=50, min_learning_rate=1e-7,
                  emotional_dimension=None, metrics=None, verbose=False, print_training_metric=False, save_plot=False, window_length=300,
-                 load_best_at_each_epoch=False, fold=0, **kwargs):
+                 load_best_at_each_epoch=False, fold=0, optimizer='Adam', **kwargs):
 
         self.device = device
-        self.model = model.to(device)
+        self.model = nn.DataParallel(model)
+        self.model = self.model.to(device)
+        
         self.model_name = model_name
-        self.save_path = save_path
         self.fold = fold
 
         self.window_length = window_length
@@ -37,11 +42,12 @@ class ABAW2Trainer(object):
         self.patience = patience
         self.criterion = criterion
         self.factor = factor
+        self.param_optimizer = optimizer
+        self.optimizer = None
+        
         self.init_optimizer_and_scheduler()
-
-        self.verbose = verbose
-
-        self.device = device
+        
+        print("Optimzer: ", self.optimizer)
 
         # Whether to show the information strings.
         self.verbose = verbose
@@ -63,8 +69,7 @@ class ABAW2Trainer(object):
 
         # The networks.
         self.save_path = save_path
-        os.makedirs(self.save_path, exist_ok=True)
-        self.model = model.to(device)
+        # model = self.model.to(device)
 
         self.init_optimizer_and_scheduler()
 
@@ -85,7 +90,10 @@ class ABAW2Trainer(object):
 
     def init_optimizer_and_scheduler(self):
         if len(self.get_parameters()) != 0:
-            self.optimizer = optim.Adam(self.get_parameters(), lr=self.learning_rate, weight_decay=0.001)
+            if self.param_optimizer == "Adam":
+                self.optimizer = optim.Adam(self.get_parameters(), lr=self.learning_rate, weight_decay=0.001)
+            else:
+                self.optimizer = optim.SGD(self.get_parameters(), lr=self.learning_rate, weight_decay=0.001)
             self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='max', patience=self.patience,
                                                                         factor=self.factor)
 
@@ -129,7 +137,7 @@ class ABAW2Trainer(object):
     def fit(
             self,
             data_to_load,
-            num_epochs=100,
+            num_epochs=30,
             min_num_epochs=10,
             checkpoint_controller=None,
             parameter_controller=None,
@@ -276,23 +284,15 @@ class ABAW2Trainer(object):
         metric_handler = ContinuousMetricsCalculatorTrial(self.metrics, self.emotional_dimension,
                                                           output_handler, continuous_label_handler)
         total_batch_counter = 0
+        prof_flag = 0
         for batch_index, (X, Y, trials, lengths, indices) in tqdm(enumerate(data_loader), total=len(data_loader)):
             total_batch_counter += len(trials)
 
             if 'frame' in X:
                 inputs = X['frame'].to(self.device)
 
-            if 'landmark' in X:
-                inputs1 = X['landmark'].to(self.device)
-
-            if 'au' in X:
-                inputs2 = X['au'].to(self.device)
-
             if 'mfcc' in X:
                 inputs3 = X['mfcc'].to(self.device)
-
-            if 'egemaps' in X:
-                inputs = X['egemaps'].to(self.device)
 
             if 'vggish' in X:
                 inputs4 = X['vggish'].to(self.device)
@@ -316,11 +316,13 @@ class ABAW2Trainer(object):
                         loss_weights[:, :, 1] *= 1
                     else:
                         raise ValueError("Unknown emotion dimention to train!")
-
+            # with profiler.profile(with_stack=True, profile_memory=True) as prof:
             if len(X.keys())>1:
                 outputs = self.model(inputs, inputs4, inputs3)
             else:
                 outputs = self.model(inputs)
+                
+            # print('outputs: ', outputs)
 
             output_handler.update_output_for_seen_trials(outputs.detach().cpu().numpy(), trials, indices, lengths)
             continuous_label_handler.update_output_for_seen_trials(labels.detach().cpu().numpy(), trials, indices, lengths)
@@ -328,14 +330,20 @@ class ABAW2Trainer(object):
             loss = self.criterion(outputs, labels, loss_weights)
 
             running_loss += loss.mean().item()
+            # print("running_loss : ", running_loss)
 
             if train_mode:
                 loss.backward()
                 self.optimizer.step()
-
-            #  print_progress(batch_index, len(data_loader))
-
+                
+            #     #  print_progress(batch_index, len(data_loader))
+            # if prof_flag == 0:
+            #     print(prof.key_averages().table(sort_by="cpu_time_total", row_limit=15))
+            #     prof_flag = 1
+                    
         epoch_loss = running_loss / total_batch_counter
+        
+        # print("epoch_loss : ", epoch_loss)
 
         output_handler.average_trial_wise_records()
         continuous_label_handler.average_trial_wise_records()
@@ -374,21 +382,13 @@ class ABAW2Trainer(object):
         total_batch_counter = 0
         for batch_index, (X, Y, trials, lengths, indices) in tqdm(enumerate(data_loader), total=len(data_loader)):
             total_batch_counter += len(trials)
+            print("trials : ", trials)
 
             if 'frame' in X:
                 inputs = X['frame'].to(self.device)
 
-            if 'landmark' in X:
-                inputs1 = X['landmark'].to(self.device)
-
-            if 'au' in X:
-                inputs2 = X['au'].to(self.device)
-
             if 'mfcc' in X:
                 inputs3 = X['mfcc'].to(self.device)
-
-            if 'egemaps' in X:
-                inputs = X['egemaps'].to(self.device)
 
             if 'vggish' in X:
                 inputs4 = X['vggish'].to(self.device)

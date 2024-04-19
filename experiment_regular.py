@@ -57,6 +57,7 @@ class Experiment(object):
             self.cpu = None
 
         self.stamp = args.stamp
+        self.seed = args.random_seed
 
         self.head = "single-headed"
         if args.head == "mh":
@@ -105,23 +106,29 @@ class Experiment(object):
 
         self.save_plot = args.save_plot
         self.device = self.init_device()
+        
+        self.optim = args.optim
 
-        self.model_name = self.experiment_name + "_" + args.model_name + "_" + self.modality[
-            0] + "_" + self.train_emotion + "_" + args.head + "_bs_" + str(self.batch_size) + "_lr_" + str(
-            self.learning_rate) + "_mlr_" + str(self.min_learning_rate) + "_" + self.stamp
+        from datetime import datetime
 
-    def init_dataloader(self, fold):
-        self.init_random_seed()
+        now = datetime.now()
+        now_date = now.strftime('%m%d_%H%M')
+        
+        self.model_name = now_date + "_" + self.experiment_name + "_bs_" + str(self.batch_size) + "_lr_" + str(
+            self.learning_rate) + "_" + self.optim + '_' + "_seed_" + str(self.seed)
+
+    def init_dataloader(self, fold=0):
+        self.init_random_seed(self.seed)
         arranger = ABAW2_VA_Arranger(self.dataset_path, window_length=self.window_length, hop_length=self.hop_length,
                                      debug=self.debug)
 
         # For fold = 0, it is the original partition.
-        data_dict = arranger.resample_according_to_window_and_hop_length(fold)
+        data_dict = arranger.resample_according_to_window_and_hop_length(seed=self.seed)
         random.shuffle(data_dict['Train_Set'])
         train_dataset = ABAW2_VA_Dataset(data_dict['Train_Set'], time_delay=self.time_delay, emotion=self.train_emotion,
                                          head=self.head, modality=self.modality,
                                          mode='train', fold=fold, mean_std_info=arranger.mean_std_info)
-        self.init_random_seed()
+        self.init_random_seed(self.seed)
         train_loader = torch.utils.data.DataLoader(
             dataset=train_dataset, batch_size=self.batch_size, shuffle=False)
 
@@ -135,11 +142,9 @@ class Experiment(object):
         return dataloader_dict
 
     def experiment(self):
-
         criterion = CCCLoss()
 
         for fold in iter(self.folds_to_run):
-
             save_path = os.path.join(self.model_save_path, self.model_name, str(fold))
             os.makedirs(save_path, exist_ok=True)
 
@@ -148,7 +153,6 @@ class Experiment(object):
             model = self.init_model()
 
             dataloader_dict = self.init_dataloader(fold)
-
 
             trainer = ABAW2Trainer(model, model_name=self.model_name, learning_rate=self.learning_rate,
                                    min_learning_rate=self.min_learning_rate,
@@ -182,20 +186,17 @@ class Experiment(object):
         else:
             output_dim = 1
 
-        if "2d1d" in self.model_name:
-            if len(self.modality) > 1:
-                model = my_2d1ddy(backbone_state_dict=self.backbone_state_dict, backbone_mode=self.backbone_mode,
-                                embedding_dim=self.cnn1d_embedding_dim, channels=self.cnn1d_channels, modality=self.modality,
-                                output_dim=output_dim, kernel_size=self.cnn1d_kernel_size, attention=self.cnn1d_attention,
-                                dropout=self.cnn1d_dropout, root_dir=self.model_load_path)
-            else:
-                model = my_2d1d(backbone_state_dict=self.backbone_state_dict, backbone_mode=self.backbone_mode,
-                                embedding_dim=self.cnn1d_embedding_dim, channels=self.cnn1d_channels, modality=self.modality,
-                                output_dim=output_dim, kernel_size=self.cnn1d_kernel_size, attention=self.cnn1d_attention,
-                                dropout=self.cnn1d_dropout, root_dir=self.model_load_path)
-            model.init()
+        if len(self.modality) > 1:
+            model = my_2d1ddy(backbone_state_dict=self.backbone_state_dict, backbone_mode=self.backbone_mode,
+                            embedding_dim=self.cnn1d_embedding_dim, channels=self.cnn1d_channels, modality=self.modality,
+                            output_dim=output_dim, kernel_size=self.cnn1d_kernel_size, attention=self.cnn1d_attention,
+                            dropout=self.cnn1d_dropout, root_dir=self.model_load_path)
         else:
-            raise ValueError("Unknown base_model!")
+            model = my_2d1d(backbone_state_dict=self.backbone_state_dict, backbone_mode=self.backbone_mode,
+                            embedding_dim=self.cnn1d_embedding_dim, channels=self.cnn1d_channels, modality=self.modality,
+                            output_dim=output_dim, kernel_size=self.cnn1d_kernel_size, attention=self.cnn1d_attention,
+                            dropout=self.cnn1d_dropout, root_dir=self.model_load_path)
+        model.init()
 
         return model
 
@@ -214,11 +215,11 @@ class Experiment(object):
         return emotion
 
     @staticmethod
-    def init_random_seed():
-        random.seed(0)
-        np.random.seed(0)
-        torch.manual_seed(0)
-        torch.cuda.manual_seed(0)
+    def init_random_seed(seed=0):
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
