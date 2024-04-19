@@ -11,6 +11,9 @@ from PIL import Image
 from configs import config_preprocessing as config
 from base.utils import OpenFaceController, txt_row_count, standardize_facial_landmarks, save_pkl_file
 
+from warnings import filterwarnings
+filterwarnings('ignore')
+
 
 class ABAW2_Preprocessing(object):
     def __init__(self):
@@ -77,7 +80,8 @@ class ABAW2_Preprocessing(object):
     def generate_dataset_info(self):
         dataset_info = {}
 
-        partition_dict = {'Train_Set': {}, 'Validation_Set': {}, 'Test_Set': {}}
+        # partition_dict = {'Train_Set': {}, 'Validation_Set': {}, 'Test_Set': {}}
+        partition_dict = {'Train_Set': {}, 'Validation_Set': {}}
         for partition, labels in self.annotation_to_partition_dict.items():
             for label in tqdm(labels, total=len(labels), desc=partition):
                 trial_name = label[:-4]
@@ -151,7 +155,7 @@ class ABAW2_Preprocessing(object):
 
                     np.save(npy_path_mfcc, mfcc_feature_sampled)
 
-                # For vggish feature
+                # For egemaps feature
                 npy_path_egemaps = os.path.join(npy_folder, "egemaps.npy")
                 if not os.path.isfile(npy_path_egemaps):
                     egemaps_path = os.path.join(self.output_path, "audio_features_egemaps", partition,
@@ -181,10 +185,18 @@ class ABAW2_Preprocessing(object):
                     for i in range(trial_length):
                         if self.labeled_frame_indices_of_each_video[partition][trial_name][i] == 1:
                             index_to_sample = i
-                            if index_to_sample >= len(vggish_feature_matrix):
-                                index_to_sample = -1
-                            vggish_feature_sampled.append(vggish_feature_matrix[index_to_sample, :])
-
+                            try:
+                                if index_to_sample >= len(vggish_feature_matrix):
+                                    index_to_sample = -1
+                                vggish_feature_sampled.append(vggish_feature_matrix[index_to_sample, :])
+                                
+                            except Exception as e:
+                                print("trial_name: ", trial_name)
+                                print("trial_length :", trial_length)
+                                print('index_to_sample: ', index_to_sample)
+                                print('vggish_feature_matrix: ', vggish_feature_matrix)
+                                break
+                            
                     vggish_feature_sampled = np.stack(vggish_feature_sampled)
                     np.save(npy_path_vggish, vggish_feature_sampled)
 
@@ -208,7 +220,8 @@ class ABAW2_Preprocessing(object):
                 # For frame
                 npy_frame_path = os.path.join(npy_folder, "frame.npy")
                 frame_matrix = []
-                black = np.zeros((48, 48, 3), dtype=np.int8)
+                # black = np.zeros((48, 48, 3), dtype=np.int8)
+                black = np.zeros((224, 224, 3), dtype=np.int8)
                 if not os.path.isfile(npy_frame_path):
 
                     for i in range(trial_length):
@@ -216,69 +229,74 @@ class ABAW2_Preprocessing(object):
                         if self.labeled_frame_indices_of_each_video[partition][trial_name][i] == 1:
                             if os.path.isfile(current_frame_path):
                                 current_frame = Image.open(current_frame_path)
-                                current_frame = current_frame.resize((48, 48))
+                                current_frame = current_frame.resize((224, 224))
                                 frame_matrix.append(np.array(current_frame))
                             else:
                                 frame_matrix.append(black)
 
                     frame_matrix = np.stack(frame_matrix)
                     np.save(npy_frame_path, frame_matrix)
+                    
 
-                # For facial landmark
-                npy_flm_path = os.path.join(npy_folder, "landmark.npy")
-                landmark_matrix = []
 
-                if not os.path.isfile(npy_flm_path):
-                    flm_path = os.path.join(self.output_path, "visual_features_openface_48", trial_name + ".csv")
-                    flm_data_x = pd.read_csv(flm_path, usecols=range(5, 73)).values
-                    flm_data_y = pd.read_csv(flm_path, usecols=range(73, 141)).values
-                    flm_data = np.concatenate((flm_data_x[...,None], flm_data_y[...,None]), axis=2)
-                    success_flm_indices = np.where(pd.read_csv(flm_path, usecols=range(4, 5)).values == 1)
-                    success_flm_data = flm_data[success_flm_indices[0]]
-                    success_flm_data = standardize_facial_landmarks(success_flm_data)
-                    flm_data[success_flm_indices[0]] = success_flm_data
+                # 데이터셋에서 불러오는 부분이 있는데 기본 args에서 받으며 args에서 default = ['frame', 'mfcc', 'vggish']이므로 일단 넘어감
+                # # For facial landmark
+                # npy_flm_path = os.path.join(npy_folder, "landmark.npy")
+                # landmark_matrix = []
 
-                    for i in range(trial_length):
-                        if self.labeled_frame_indices_of_each_video[partition][trial_name][i] == 1:
-                            if i >= len(flm_data):
-                                i = -1
-                            landmark_matrix.append(flm_data[i])
+                # if not os.path.isfile(npy_flm_path):
+                #     flm_path = os.path.join(self.output_path, "visual_features_openface_48", trial_name + ".csv")
+                #     flm_data_x = pd.read_csv(flm_path, usecols=range(5, 73)).values
+                #     flm_data_y = pd.read_csv(flm_path, usecols=range(73, 141)).values
+                #     flm_data = np.concatenate((flm_data_x[...,None], flm_data_y[...,None]), axis=2)
+                #     success_flm_indices = np.where(pd.read_csv(flm_path, usecols=range(4, 5)).values == 1)
+                #     success_flm_data = flm_data[success_flm_indices[0]]
+                #     success_flm_data = standardize_facial_landmarks(success_flm_data)
+                #     flm_data[success_flm_indices[0]] = success_flm_data
 
-                    landmark_matrix = np.stack(landmark_matrix)
-                    np.save(npy_flm_path, landmark_matrix)
+                #     for i in range(trial_length):
+                #         if self.labeled_frame_indices_of_each_video[partition][trial_name][i] == 1:
+                #             if i >= len(flm_data):
+                #                 i = -1
+                #             landmark_matrix.append(flm_data[i])
 
-                # For facial action unit
-                npy_au_path = os.path.join(npy_folder, "au.npy")
-                au_matrix = []
+                #     landmark_matrix = np.stack(landmark_matrix)
+                #     np.save(npy_flm_path, landmark_matrix)
 
-                if not os.path.isfile(npy_au_path):
-                    au_path = os.path.join(self.output_path, "visual_features_openface_48", trial_name + ".csv")
-                    au_data = pd.read_csv(au_path, usecols=range(141, 158)).values
+                # # For facial action unit
+                
+                # npy_au_path = os.path.join(npy_folder, "au.npy")
+                # au_matrix = []
 
-                    for i in range(trial_length):
-                        if self.labeled_frame_indices_of_each_video[partition][trial_name][i] == 1:
-                            if i >= len(au_data):
-                                i = -1
-                            au_matrix.append(au_data[i])
+                # if not os.path.isfile(npy_au_path):
+                #     au_path = os.path.join(self.output_path, "visual_features_openface_48", trial_name + ".csv")
+                #     au_data = pd.read_csv(au_path, usecols=range(141, 158)).values
 
-                    au_matrix = np.stack(au_matrix)
-                    np.save(npy_au_path, au_matrix)
+                #     for i in range(trial_length):
+                #         if self.labeled_frame_indices_of_each_video[partition][trial_name][i] == 1:
+                #             if i >= len(au_data):
+                #                 i = -1
+                #             au_matrix.append(au_data[i])
 
-    def extract_visual_features(self):
+                #     au_matrix = np.stack(au_matrix)
+                #     np.save(npy_au_path, au_matrix)
 
-        for partition, labels in self.annotation_to_partition_dict.items():
-            for label in tqdm(labels, total=len(labels)):
-                input_path = os.path.join(self.image_path, label[:-4])
-                output_path = os.path.join(self.output_path, "visual_features_openface_48")
-                os.makedirs(output_path, exist_ok=True)
+    # def extract_visual_features(self):
 
-                openface = OpenFaceController(openface_path=self.openface_config['openface_directory'],
-                                              output_directory=output_path)
-                _ = openface.process_video(
-                    input_filename=input_path, output_filename=label[:-4], **self.openface_config)
+    #     for partition, labels in self.annotation_to_partition_dict.items():
+    #         for label in tqdm(labels, total=len(labels)):
+    #             input_path = os.path.join(self.image_path, label[:-4])
+    #             output_path = os.path.join(self.output_path, "visual_features_openface_48")
+    #             os.makedirs(output_path, exist_ok=True)
+
+    #             openface = OpenFaceController(openface_path=self.openface_config['openface_directory'],
+    #                                           output_directory=output_path)
+    #             _ = openface.process_video(
+    #                 input_filename=input_path, output_filename=label[:-4], **self.openface_config)
 
     def get_available_frame_indices(self):
-        available_frame_indices = {'Train_Set': {}, 'Validation_Set': {}, 'Test_Set': {}}
+        # available_frame_indices = {'Train_Set': {}, 'Validation_Set': {}, 'Test_Set': {}}
+        available_frame_indices = {'Train_Set': {}, 'Validation_Set': {}}
         intermediate_pkl_path = os.path.join(self.output_path, "available_frame_indices.pkl")
         if os.path.isfile(intermediate_pkl_path):
             with open(intermediate_pkl_path, 'rb') as handle:
@@ -310,7 +328,8 @@ class ABAW2_Preprocessing(object):
 
     def get_labeled_frame_indices(self):
 
-        labeled_frame_indices = {'Train_Set': {}, 'Validation_Set': {}, 'Test_Set': {}}
+        # labeled_frame_indices = {'Train_Set': {}, 'Validation_Set': {}, 'Test_Set': {}}
+        labeled_frame_indices = {'Train_Set': {}, 'Validation_Set': {}}
         intermediate_pkl_path = os.path.join(self.output_path, "labeled_frame_indices.pkl")
         if os.path.isfile(intermediate_pkl_path):
             with open(intermediate_pkl_path, 'rb') as handle:
@@ -372,6 +391,7 @@ class ABAW2_Preprocessing(object):
         return corresponding_video
 
     def extract_aural_features(self):
+        vggish_frame_size = []
 
         for partition, wavs in self.video_to_partition_dict.items():
             for wav in tqdm(wavs, total=len(wavs)):
@@ -395,7 +415,7 @@ class ABAW2_Preprocessing(object):
                     )
 
                     if not os.path.isfile(output_path):
-                        subprocess.call(command)
+                        subprocess.call(command, shell=True)
 
                 if "egemaps" in self.aural_feature_list:
                     feature = "egemaps"
@@ -414,7 +434,7 @@ class ABAW2_Preprocessing(object):
                     )
 
                     if not os.path.isfile(output_path):
-                        subprocess.call(command)
+                        subprocess.call(command, shell=True)
 
                 if "vggish" in self.aural_feature_list:
                     # Requires tensorflow and GPU to run. One wav file at a time.
@@ -429,10 +449,23 @@ class ABAW2_Preprocessing(object):
                         video = cv2.VideoCapture(corresponding_video)
                         video_fps = video.get(cv2.CAP_PROP_FPS)
                         hop_sec = 1 / video_fps
-
-                        vggish_feature = extract_vggish(wav_file=input_path, window_sec=0.96, hop_sec=hop_sec)
-
-                        np.save(output_path, vggish_feature)
+                        # 보통 hop_sec = 0.033333333333333333근처
+                        
+                        if not "Test_Set" in input_path:
+                            # default 값보다 전부 크게 던져주는 중 -> 그럼에도 frame size가 커서 배치가 터지는 중...
+                            vggish_feature = extract_vggish(wav_file=input_path, window_sec=0.96, hop_sec=hop_sec)
+                            
+                            # vggish_feature = extract_vggish(wav_file=input_path, window_sec=0.96, hop_sec=0.07) # Affwild2_processed/wav/Train_Set/172.wav 에서 터짐 (hop=0.07 / frame_size=5571)
+                            # vggish_feature = extract_vggish(wav_file=input_path, window_sec=0.96, hop_sec=0.08) # Affwild2_processed/wav/Train_Set/7-60-1920x1080.wav 에서 터짐 (frame_size= 9645)
+                            # vggish_feature = extract_vggish(wav_file=input_path, window_sec=0.96, hop_sec=0.1)  # 7-60-1920x1080.wav (hop_size: 0.1 / fra,e+soze: 7716)
+                            # vggish_feature = extract_vggish(wav_file=input_path, window_sec=0.96, hop_sec=0.15) # 123-25-1920x1080.wav (frame_size: 6055)
+                            # vggish_feature = extract_vggish(wav_file=input_path, window_sec=0.96, hop_sec=0.18) # 9-15-1920x1080.wav (frame_size: 8784)
+                            
+                            # vggish_feature = extract_vggish(wav_file=input_path, window_sec=0.96, hop_sec=0.29)
+                            np.save(output_path, vggish_feature)
+                            
+                            # vggish_frame_size.append(extract_vggish(wav_file=input_path, window_sec=0.96, hop_sec=0.08))
+            # print("max_frame size: ", max(vggish_frame_size)) # hop_sec:0.08일 때, max_frame size:  19763
 
     def convert_video_to_wav(self):
         for partition, files in self.video_to_partition_dict.items():
@@ -455,7 +488,8 @@ class ABAW2_Preprocessing(object):
                     subprocess.call(command, shell=True)
 
     def generate_video_to_partition_dict(self):
-        video_to_partition_dict = {'Train_Set': [], 'Validation_Set': [], 'Test_Set': []}
+        # video_to_partition_dict = {'Train_Set': [], 'Validation_Set': [], 'Test_Set': []}
+        video_to_partition_dict = {'Train_Set': [], 'Validation_Set': []}
 
         # Training set and validation set.
         for root, dirs, files in os.walk(self.annotation_path):
@@ -472,7 +506,7 @@ class ABAW2_Preprocessing(object):
                         file = file.split("_left")[0]
                     else:
                         file = file[:-4]
-
+                        
                     found_video = [video for video in video_pool if (file + ".mp4" == video or file + ".avi" == video)]
 
                     assert len(found_video) == 1
@@ -481,13 +515,14 @@ class ABAW2_Preprocessing(object):
                         processed.append(found_video[0])
                         video_to_partition_dict[partition].append(found_video[0])
 
-        # Testing set
-        video_pool = os.listdir(self.test_video_path)
-        video_to_partition_dict['Test_Set'] = video_pool
+        # # Testing set
+        # video_pool = os.listdir(self.test_video_path)
+        # video_to_partition_dict['Test_Set'] = video_pool
         return video_to_partition_dict
 
     def generate_annotation_to_partition_dict(self):
-        annotation_to_partition_dict = {'Train_Set': [], 'Validation_Set': [], 'Test_Set': []}
+        # annotation_to_partition_dict = {'Train_Set': [], 'Validation_Set': [], 'Test_Set': []}
+        annotation_to_partition_dict = {'Train_Set': [], 'Validation_Set': []}
 
         for root, dirs, files in os.walk(self.annotation_path):
 
@@ -496,19 +531,19 @@ class ABAW2_Preprocessing(object):
             partition = root.split(sep=os.sep)[-1]
             for file in files:
                 if file.endswith(".txt"):
-                    # exclude the extension
+                            # exclude the extension
                     annotation_to_partition_dict[partition].append(file)
 
-        # For Test_Set:
-        cropped_aligned_image_folder_pool = os.listdir(self.image_path)
+        # # For Test_Set:
+        # cropped_aligned_image_folder_pool = os.listdir(self.image_path)
 
-        for partition, files in annotation_to_partition_dict.items():
-            for file in files:
-                if file[:-4] in cropped_aligned_image_folder_pool:
-                    cropped_aligned_image_folder_pool.remove(file[:-4])
-                else:
-                    raise ValueError("Duplication found!")
-        annotation_to_partition_dict['Test_Set'] = cropped_aligned_image_folder_pool
+        # for partition, files in annotation_to_partition_dict.items():
+        #     for file in files:
+        #         if file[:-4] in cropped_aligned_image_folder_pool:
+        #             cropped_aligned_image_folder_pool.remove(file[:-4])
+        #         else:
+        #             raise ValueError("Duplication found!")
+        # annotation_to_partition_dict['Test_Set'] = cropped_aligned_image_folder_pool
         return annotation_to_partition_dict
 
 

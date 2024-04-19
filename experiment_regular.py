@@ -5,16 +5,21 @@ import torch
 import torch.backends.cudnn
 import torch.cuda
 from torch import nn
+from torch.utils.data.distributed import DistributedSampler
 
+# ABAW2
 from base.utils import detect_device, select_gpu, set_cpu_thread
 from configs import config_processing as config
 from model.model import my_2d1d, my_2d1ddy
+from model.model2 import TwoStreamAuralVisualModel, CAM
 from base.dataset import ABAW2_VA_Arranger, ABAW2_VA_Dataset
 from base.checkpointer import Checkpointer
 from base.parameter_control import ParamControl
 from base.trainer import ABAW2Trainer
 import os
 
+#JCA
+from base.dataset_model2 import JCA_VA_Arranger, JCA_VA_Dataset
 
 class CCCLoss(nn.Module):
     def __init__(self):
@@ -38,7 +43,7 @@ class CCCLoss(nn.Module):
 
 
 class Experiment(object):
-    def __init__(self, args):
+    def __init__(self, args, fold):
         self.args = args
         self.experiment_name = args.experiment_name
         self.dataset_path = args.dataset_path
@@ -47,6 +52,8 @@ class Experiment(object):
         self.resume = args.resume
         self.debug = args.debug
         self.config = config
+        
+        print("self.experiment_name : " ,self.experiment_name) 
 
         self.gpu = args.gpu
         self.cpu = args.cpu
@@ -81,7 +88,8 @@ class Experiment(object):
         self.lstm_dropout = args.lstm_dropout
 
         self.cross_validation = args.cross_validation
-        self.folds_to_run = args.folds_to_run
+        # self.folds_to_run = args.folds_to_run
+        self.folds_to_run = fold
         if not self.cross_validation:
             self.folds_to_run = [0]
 
@@ -132,13 +140,41 @@ class Experiment(object):
         train_loader = torch.utils.data.DataLoader(
             dataset=train_dataset, batch_size=self.batch_size, shuffle=False)
 
-        validate_dataset = ABAW2_VA_Dataset(data_dict['Validation_Set'], time_delay=self.time_delay,
-                                            emotion=self.train_emotion, modality=self.modality,
-                                            head=self.head, mode='validate', fold=fold, mean_std_info=arranger.mean_std_info)
-        validate_loader = torch.utils.data.DataLoader(
-            dataset=validate_dataset, batch_size=self.batch_size, shuffle=False)
+            validate_dataset = ABAW2_VA_Dataset(data_dict['Validation_Set'], time_delay=self.time_delay,
+                                                emotion=self.train_emotion, modality=self.modality,
+                                                head=self.head, mode='validate', fold=fold, mean_std_info=arranger.mean_std_info)
+            validate_loader = torch.utils.data.DataLoader(
+                dataset=validate_dataset, batch_size=self.batch_size, shuffle=False)
 
-        dataloader_dict = {'train': train_loader, 'validate': validate_loader}
+            dataloader_dict = {'train': train_loader, 'validate': validate_loader}
+            
+        # if mode=='test':
+        #     test_dataset = ABAW2_VA_Dataset(data_dict, time_delay=self.time_delay,
+        #                                         emotion=self.train_emotion, modality=self.modality,
+        #                                         head=self.head, mode='test', fold=fold, mean_std_info=mean_std_info)
+        #     test_loader = torch.utils.data.DataLoader(
+        #         dataset=test_dataset, batch_size=self.batch_size, shuffle=False)            
+
+        #     dataloader_dict = {'test':test_loader}
+                
+
+        # elif self.experiment_name in "jca":
+        #     random.shuffle(data_dict['Train_Set'])
+        #     train_dataset = JCA_VA_Dataset(data_dict['Train_Set'], time_delay=self.time_delay, emotion=self.train_emotion,
+        #                                     head=self.head, modality=self.modality,
+        #                                     mode='train', fold=fold, mean_std_info=mean_std_info)
+            
+        #     train_loader = torch.utils.data.DataLoader(
+        #         dataset=train_dataset, batch_size=self.batch_size, shuffle=False)
+
+        #     validate_dataset = JCA_VA_Dataset(data_dict['Validation_Set'], time_delay=self.time_delay,
+        #                                         emotion=self.train_emotion, modality=self.modality,
+        #                                         head=self.head, mode='validate', fold=fold, mean_std_info=mean_std_info)
+        #     validate_loader = torch.utils.data.DataLoader(
+        #         dataset=validate_dataset, batch_size=self.batch_size, shuffle=False)
+
+        #     dataloader_dict = {'train': train_loader, 'validate': validate_loader}
+            
         return dataloader_dict
 
     def experiment(self):
@@ -155,14 +191,33 @@ class Experiment(object):
             dataloader_dict = self.init_dataloader(fold)
 
             trainer = ABAW2Trainer(model, model_name=self.model_name, learning_rate=self.learning_rate,
-                                   min_learning_rate=self.min_learning_rate,
-                                   metrics=self.metrics, save_path=save_path, early_stopping=self.early_stopping,
-                                   train_emotion=self.train_emotion, patience=self.patience, factor=self.factor,
-                                   emotional_dimension=self.emotion_dimension, head=self.head, max_epoch=self.num_epochs,
-                                   load_best_at_each_epoch=self.load_best_at_each_epoch, window_length=self.window_length,
-                                   milestone=self.milestone, criterion=criterion, verbose=True, save_plot=self.save_plot,
-                                   fold=fold, device=self.device)
+                                min_learning_rate=self.min_learning_rate,
+                                metrics=self.metrics, save_path=save_path, early_stopping=self.early_stopping,
+                                train_emotion=self.train_emotion, patience=self.patience, factor=self.factor,
+                                emotional_dimension=self.emotion_dimension, head=self.head, max_epoch=self.num_epochs,
+                                load_best_at_each_epoch=self.load_best_at_each_epoch, window_length=self.window_length,
+                                milestone=self.milestone, criterion=criterion, verbose=True, save_plot=self.save_plot,
+                                optimizer=self.optim, device=self.device)
 
+        ########
+        # parameter_controller = ParamControl(trainer, gradual_release=self.gradual_release,
+        #                                     release_count=self.release_count, backbone_mode=self.backbone_mode)
+
+        # checkpoint_controller = Checkpointer(checkpoint_filename, trainer, parameter_controller, resume=self.resume)
+
+        # if self.resume:
+        #     trainer, parameter_controller = checkpoint_controller.load_checkpoint()
+        # else:
+        #     checkpoint_controller.init_csv_logger(self.args, self.config)
+
+
+        # datatloader_fold: kfold 적용된 train/valid fold set
+        # dataloader_test: kfold 적용안된 test set
+        # dataloader_fold, dataloader_test, mean_std_info = self.init_arranger()
+
+        # training
+        # for  dataloader_dict in enumerate(dataloader_fold):
+            
             parameter_controller = ParamControl(trainer, gradual_release=self.gradual_release,
                                                 release_count=self.release_count, backbone_mode=self.backbone_mode)
 
@@ -171,12 +226,26 @@ class Experiment(object):
             if self.resume:
                 trainer, parameter_controller = checkpoint_controller.load_checkpoint()
             else:
-                checkpoint_controller.init_csv_logger(self.args, self.config)
-
+                checkpoint_controller.init_csv_logger(self.args, self.config)            
+            
+            
+            
+            # dataloader_dict = self.init_dataloader(dataloader_dict, mean_std_info)
+            dataloader_dict = self.init_dataloader(self.folds_to_run)
+            
             if not trainer.fit_finished:
                 trainer.fit(dataloader_dict, num_epochs=self.num_epochs, min_num_epochs=self.min_num_epochs,
                             save_model=True, parameter_controller=parameter_controller,
                             checkpoint_controller=checkpoint_controller)
+                
+                
+        # # test
+        # dataloader_test = self.init_dataloader(dataloader_test, mean_std_info, mode='test')
+                
+        # # kfold를 끝낸 후 테스트를 어떻게 불러내야 할지..
+        # trainer.test(dataloader_test, num_epochs=self.num_epochs, min_num_epochs=self.min_num_epochs,
+        #             save_model=True, parameter_controller=parameter_controller,
+        #             checkpoint_controller=checkpoint_controller)
 
     def init_model(self):
         self.init_random_seed()
@@ -225,9 +294,11 @@ class Experiment(object):
 
     def init_device(self):
         device = detect_device()
-
+        
         if not self.args.high_performance_cluster:
             select_gpu(self.gpu)
             set_cpu_thread(self.cpu)
+
+        print("device : " , device)
 
         return device

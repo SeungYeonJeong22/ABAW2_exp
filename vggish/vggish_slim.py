@@ -77,8 +77,11 @@ def define_vggish_slim(features_tensor=None, training=False):
           tf.float32, shape=(None, params.NUM_FRAMES, params.NUM_BANDS),
           name='input_features')
     # Reshape to 4-D so that we can convolve a batch with conv2d().
+    # print("features_tensor : ", features_tensor)
     net = tf.reshape(features_tensor,
                      [-1, params.NUM_FRAMES, params.NUM_BANDS, 1])
+    
+    # print("net : ", net)
 
     # The VGG stack of alternating convolutions and max-pools.
     net = slim.conv2d(net, 64, scope='conv1')

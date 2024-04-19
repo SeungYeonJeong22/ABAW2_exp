@@ -18,6 +18,7 @@ config_preprocessing = {
 
     "openface_config": {
             "openface_directory": "OpenFace-OpenFace_2.2.0/exe/FeatureExtraction",
+            "openface_directory": "OpenFace-OpenFace_2.2.0/exe/FeatureExtraction",
             "input_flag": " -f  ",
             "output_features": " -2Dfp ",
             "output_action_unit": " -aus ",

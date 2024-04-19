@@ -49,7 +49,7 @@ class ParamControl(object):
         if self.gradual_release:
             if self.release_count > 0:
                 indices = self.get_param_group()
-
+                
                 for param in list(itemgetter(*indices)(list(self.trainer.model.parameters()))):
                     param.requires_grad = True
 

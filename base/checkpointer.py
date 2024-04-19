@@ -21,10 +21,10 @@ class Checkpointer(object):
 
         self.columns = []
 
-    def save_log_to_csv(self, epoch, mean_train_record, mean_validate_record):
+    def save_log_to_csv(self,  epoch, mean_train_record, mean_validate_record):
         num_layers_to_update = len(self.trainer.optimizer.param_groups[0]['params'])
 
-        csv_records = [time.time(), epoch, int(self.trainer.best_epoch_info['epoch']), num_layers_to_update,
+        csv_records = [time.time(),  epoch, int(self.trainer.best_epoch_info['epoch']), num_layers_to_update,
                        self.trainer.optimizer.param_groups[0]['lr'], self.trainer.train_losses[-1],
                        self.trainer.validate_losses[-1]]
 
@@ -77,6 +77,8 @@ class Checkpointer(object):
 
         self.columns = ['time', 'epoch', 'best_epoch', 'layer_to_update', 'lr',
                         'tr_loss', 'val_loss']
+        # self.columns = ['time', 'split_num', 'epoch', 'best_epoch', 'layer_to_update', 'lr',
+        #                 'tr_loss', 'val_loss']
 
         if self.trainer.head == "single-headed":
             if self.trainer.train_emotion == "arousal":
@@ -99,6 +101,7 @@ class Checkpointer(object):
         if os.path.isfile(self.path):
             print("Loading checkpoint. Are you sure it is intended?")
             self.checkpoint = {**self.checkpoint, **load_single_pkl(self.path)}
+            # self.checkpoint = {**self.checkpoint_load_path, **load_single_pkl(self.path)}
             print("Checkpoint loaded!")
 
             self.trainer = self.checkpoint['trainer']

@@ -8,6 +8,9 @@ import torch.nn.functional as F
 from torch.nn.utils import weight_norm
 from torch.autograd import Variable
 
+from warnings import filterwarnings
+filterwarnings('ignore')
+
 
 class Chomp1d(nn.Module):
     def __init__(self, chomp_size):

@@ -7,7 +7,11 @@ from base.dataset import ABAW2_VA_Arranger
 from experiment_regular import Experiment
 
 # Please change it accordingly.
-dataset_path = "/home/zhangsu/dataset/affwild2"
+# dataset_path = "/home/zhangsu/dataset/affwild2"
+# dataset_path = "Affwild2_processed"
+# dataset_path = "Affwild2_processed_ver2"
+# dataset_path = "Affwild2_processed_ver3"
+dataset_path = "Affwild2_processed_model2"
 
 
 # No need to change the rest.
@@ -26,10 +30,21 @@ for feature in feature_list:
             sums = 0
             for trial in tqdm(trials, total=len(trials)):
                 feature_path = os.path.join(dataset_path, "npy_data", trial, feature + ".npy")
-                feature_matrix = np.load(feature_path)
+                feature_matrix = np.load(feature_path, allow_pickle=True)
                 feature_array = feature_matrix.flatten()
                 lengths += len(feature_array)
-                sums += feature_array.sum()
+                try:
+                    sums += feature_array.sum()
+                except:
+                    print("feature_path :", feature_path)
+                    print("feature_array :", feature_array)
+                    print("lengths :", lengths)
+                    
+                    for idx, i in enumerate(feature_array):
+                        if type(i) == str:
+                            feature_array[idx] = np.float64(i.replace("u",""))
+                            
+                    sums += feature_array.sum()
             mean_std_dict[feature][fold][partition]['mean'] = sums / (lengths + 1e-10)
 
 
@@ -42,10 +57,22 @@ for feature in feature_list:
             x_minus_mean_square = 0
             for trial in tqdm(trials, total=len(trials)):
                 feature_path = os.path.join(dataset_path, "npy_data", trial, feature + ".npy")
-                feature_matrix = np.load(feature_path)
+                feature_matrix = np.load(feature_path,allow_pickle=True)
                 feature_array = feature_matrix.flatten()
                 lengths += len(feature_array)
-                x_minus_mean_square += np.sum((feature_array - mean) ** 2)
+                try:
+                    x_minus_mean_square += np.sum((feature_array - mean) ** 2)
+                except:
+                    print("feature_path :", feature_path)
+                    print("feature_array :", feature_array)
+                    print("lengths :", lengths)
+                    
+                    for idx, i in enumerate(feature_array):
+                        if type(i) == str:
+                            feature_array[idx] = np.float64(i.replace("u",""))
+                            
+                    sums += feature_array.sum()                
+                
             x_minus_mean_square_divide_N_minus_1 = x_minus_mean_square / (lengths - 1)
             mean_std_dict[feature][fold][partition]['std'] = np.sqrt(x_minus_mean_square_divide_N_minus_1)
 

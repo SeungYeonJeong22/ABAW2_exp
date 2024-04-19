@@ -13,13 +13,14 @@ import torch.utils.data
 from torch import nn
 from warnings import filterwarnings
 filterwarnings('ignore')
+import torch.nn as nn
 
 import torch.autograd.profiler as profiler
 from base.logger import ContinuousOutputHandlerNPYTrial, ContinuousMetricsCalculatorTrial, ConcordanceCorrelationCoefficient, PlotHandlerTrial
 
 
 class ABAW2Trainer(object):
-    def __init__(self, model, model_name='2d1d', save_path=None, train_emotion='both', head='multi-headed', factor=0.1,
+    def __init__(self, model, model_name='2d1d', save_path=None, train_emotion='both', head='multi-headed', factor=0.1, subseq_len = 16,
                  early_stopping=100, criterion=None, milestone=[0], patience=10, learning_rate=0.00001, device='cpu', num_classes=2, max_epoch=50, min_learning_rate=1e-7,
                  emotional_dimension=None, metrics=None, verbose=False, print_training_metric=False, save_plot=False, window_length=300,
                  load_best_at_each_epoch=False, fold=0, optimizer='Adam', **kwargs):
@@ -71,7 +72,7 @@ class ABAW2Trainer(object):
         self.save_path = save_path
         # model = self.model.to(device)
 
-        self.init_optimizer_and_scheduler()
+        # self.init_optimizer_and_scheduler()
 
         # parameter_control
         self.milestone = milestone
@@ -87,7 +88,14 @@ class ABAW2Trainer(object):
         self.csv_filename = None
         self.best_epoch_info = None
         self.load_best_at_each_epoch = load_best_at_each_epoch
-
+        
+        
+        # JCA
+        if "jca" in self.model_name:
+            self.subseq_len = subseq_len
+            
+            self.fusion_model = cam
+        
     def init_optimizer_and_scheduler(self):
         if len(self.get_parameters()) != 0:
             if self.param_optimizer == "Adam":
@@ -96,7 +104,7 @@ class ABAW2Trainer(object):
                 self.optimizer = optim.SGD(self.get_parameters(), lr=self.learning_rate, weight_decay=0.001)
             self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='max', patience=self.patience,
                                                                         factor=self.factor)
-
+            
     def get_parameters(self):
         r"""
         Get the parameters to update.
@@ -123,7 +131,8 @@ class ABAW2Trainer(object):
     def test(
             self,
             data_to_load,
-            output_save_path
+            output_save_path,
+            train_mode=False
     ):
         if self.verbose:
             print("------")
@@ -232,6 +241,7 @@ class ABAW2Trainer(object):
                 print(
                     "\n Fold {:2} Epoch {:2} in {:.0f}s || Train loss={:.3f} | Val loss={:.3f} | LR={:.1e} | Release_count={} | best={} | "
                     "improvement={}-{}".format(
+                        # 
                         self.fold,
                         epoch + 1,
                         time.time() - time_epoch_start,
@@ -248,7 +258,7 @@ class ABAW2Trainer(object):
                 print("------")
 
             checkpoint_controller.save_log_to_csv(
-                epoch, train_record_dict['overall'], validate_record_dict['overall'])
+                 epoch, train_record_dict['overall'], validate_record_dict['overall'])
 
             # Early stopping controller.
             if self.early_stopping and epoch > min_num_epochs:
@@ -264,7 +274,9 @@ class ABAW2Trainer(object):
             self.start_epoch = epoch + 1
 
             if self.load_best_at_each_epoch:
+                # checkpoint = torch.load(self.load_best_at_each_epoch + "/0" + "/checkpoint.pkl")
                 self.model.load_state_dict(self.best_epoch_info['model_weights'])
+                # print("self.model.load_state_dict(checkpoint['model_weights']) :", self.model.load_state_dict(checkpoint['model_weights']))
 
             checkpoint_controller.save_checkpoint(self, parameter_controller, self.save_path)
 
@@ -369,7 +381,7 @@ class ABAW2Trainer(object):
 
         return epoch_loss, epoch_result_dict
 
-    def loop_test(self, data_loader, output_save_path):
+    def loop_test(self, data_loader, output_save_path, train_mode=False):
 
         output_handler = ContinuousOutputHandlerNPYTrial(self.emotional_dimension)
         continuous_label_handler = ContinuousOutputHandlerNPYTrial(self.emotional_dimension)
