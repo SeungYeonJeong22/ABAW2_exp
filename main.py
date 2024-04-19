@@ -1,8 +1,10 @@
 import sys
 import argparse
-import os
 
 if __name__ == '__main__':
+    frame_size = 48
+    crop_size = 40
+
     parser = argparse.ArgumentParser(description='Say hello')
 
     # 1. Experiment Setting
@@ -20,15 +22,13 @@ if __name__ == '__main__':
     parser.add_argument('-model_load_path', default='load', type=str,
                         help='The path to load the trained model, such as the backbone.')  # /scratch/users/ntu/su012/pretrained_model
     parser.add_argument('-model_save_path', default='save', type=str,
-    parser.add_argument('-model_save_path', default='save', type=str,
                         help='The path to save the trained model ')  # /scratch/users/ntu/su012/trained_model
-    parser.add_argument('-python_package_path', default='attention', type=str,
     parser.add_argument('-python_package_path', default='attention', type=str,
                         help='The path to the entire repository.')
 
     # 1.3. Experiment name, and stamp, will be used to name the output files.
     # Stamp is used to add a string to the outpout filename, so that instances with different setting will not overwride.
-    # parser.add_argument('-experiment_name', default="ABAW2", help='The experiment name.')
+    parser.add_argument('-experiment_name', default="ABAW2", help='The experiment name.')
     parser.add_argument('-stamp', default='test', type=str, help='To indicate different experiment instances')
 
     # 1.4. Load checkpoint or not?
@@ -47,7 +47,7 @@ if __name__ == '__main__':
     #   and Arousal.
     # If choose valence or arousal, the output dimension can be 1 for single-headed, or 2 for multi-headed.
     # For the latter, a weight will be applied to the output to favor the selected emotion.
-    parser.add_argument('-train_emotion', default="both",
+    parser.add_argument('-train_emotion', default="valence",
                         help='The emotion dimension to focus when updating gradient: arousal, valence, both')
     parser.add_argument('-head', default="mh", help='Output 2 dimensions or 1? mh: multi-headed, sh: single-headed')
 
@@ -56,7 +56,7 @@ if __name__ == '__main__':
 
     # 2. Model setting.
     # 2d1d consists of a Res50 as the backbone for visual encoding, and a TCN for temporal encoding, followed by a fc for regression.
-    # parser.add_argument('-model_name', default="2d1d", help='Model: 2d1d')
+    parser.add_argument('-model_name', default="2d1d", help='Model: 2d1d')
 
     # 2.1. Res50. This is the backbone of "2d1d"
     parser.add_argument('-backbone_mode', default="ir", help='Mode for resnet50 backbone: ir, ir_se')
@@ -95,7 +95,7 @@ if __name__ == '__main__':
     parser.add_argument('-min_learning_rate', default=1e-6, type=float, help='The minimum learning rate.')
     parser.add_argument('-num_epochs', default=30, type=int, help='The total of epochs to run during training.')
     parser.add_argument('-min_num_epochs', default=0, type=int, help='The minimum epoch to run at least.')
-    parser.add_argument('-early_stopping', default=7, type=int,
+    parser.add_argument('-early_stopping', default=20, type=int,
                         help='If no improvement, the number of epoch to run before halting the training')
     parser.add_argument('-window_length', default=300, type=int, help='The length in point number to windowing the data.')
     parser.add_argument('-hop_length', default=200, type=int, help='The step size or stride to move the window.')
@@ -109,8 +109,6 @@ if __name__ == '__main__':
     parser.add_argument('-milestone', default=[0], nargs="+", type=int, help='The specific epochs to do something.')
     parser.add_argument('-load_best_at_each_epoch', default=1, type=int,
                         help='Whether to load the best model state at the end of each epoch?')
-    
-    parser.add_argument('-optim', default="Adam", type=str, help='Choose Optimizer?')
     
     parser.add_argument('-optim', default="Adam", type=str, help='Choose Optimizer?')
 
@@ -134,27 +132,6 @@ if __name__ == '__main__':
         from test import Experiment
     else:
         from experiment_regular import Experiment
-    
-    continual_directory_path = "20240309_135213_ABAW2_2d1d_frame_both_mh_bs_8_lr_0.0001_mlr_1e-06_Adam_test"
-    continually_experiment_root_path = os.path.join(args.model_save_path, continual_directory_path)
-    continual_fold = args.continual_fold
-    
-    if continual_fold == 0:
-        folds = [i for i in range(5)]
-        resume=0
-    else:
-        folds = [i for i in range(continual_fold, 5)]
-        args.resume=1
-        
-    os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
-    
-    for fold in folds:
-        experiment_handler = Experiment(args, fold)
-        
-        if not args.continual_fold:
-            save_path = os.path.join(experiment_handler.model_save_path, experiment_handler.model_name)
-        else:
-            save_path = os.path.join(continually_experiment_root_path)
-            resume = 1
-        
-        experiment_handler.experiment(save_path, fold)
+
+    experiment_handler = Experiment(args)
+    experiment_handler.experiment()

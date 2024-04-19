@@ -9,6 +9,7 @@ import numpy as np
 import random
 from operator import itemgetter
 from sklearn.model_selection import KFold
+import json
 
 class ABAW2_VA_Arranger(object):
     def __init__(self, dataset_path, window_length=300, hop_length=300, debug=0):
@@ -57,48 +58,48 @@ class ABAW2_VA_Arranger(object):
         new_partition_dict['Test_Set'] = partition_dict['Test_Set']
         return new_partition_dict
     
-    @staticmethod
-    def split_train_test_trial(partition_dict, mode='Test', seed=0):
-        random.seed(seed)
+    # @staticmethod
+    # def split_train_test_trial(partition_dict, mode='Test', seed=0):
+    #     random.seed(seed)
         
-        # Train_Test를 나눌 때
-        if mode == 'Test':
-            new_partition_dict = {'Train_Set': {}, 'Test_Set': {}}
+    #     # Train_Test를 나눌 때
+    #     if mode == 'Test':
+    #         new_partition_dict = {'Train_Set': {}, 'Test_Set': {}}
             
-            # 전체 데이터로 모아서
-            partition_dict['Train_Set'].update(partition_dict['Validation_Set'])
-            partition_dict = partition_dict['Train_Set']
+    #         # 전체 데이터로 모아서
+    #         partition_dict['Train_Set'].update(partition_dict['Validation_Set'])
+    #         partition_dict = partition_dict['Train_Set']
             
-            # 20%만 테스트로 사용
-            test = random.sample(partition_dict.keys(), int(len(partition_dict.keys()) * 0.2))
-            train = [t for t in partition_dict.keys() if not t in test]
+    #         # 20%만 테스트로 사용
+    #         test = random.sample(partition_dict.keys(), int(len(partition_dict.keys()) * 0.2))
+    #         train = [t for t in partition_dict.keys() if not t in test]
             
-            for trial_train in train:
-                new_partition_dict["Train_Set"].update({trial_train:partition_dict[trial_train]})
+    #         for trial_train in train:
+    #             new_partition_dict["Train_Set"].update({trial_train:partition_dict[trial_train]})
                 
-            for trial_test in test:
-                new_partition_dict["Test_Set"].update({trial_test:partition_dict[trial_test]})
+    #         for trial_test in test:
+    #             new_partition_dict["Test_Set"].update({trial_test:partition_dict[trial_test]})
                 
-            return new_partition_dict
+    #         return new_partition_dict
         
-        # Train_Valid 나눌 때
-        elif mode == 'Valid':
-            new_partition_dict = {'Train_Set': {}, 'Validation_Set': {}}
+    #     # Train_Valid 나눌 때
+    #     elif mode == 'Valid':
+    #         new_partition_dict = {'Train_Set': {}, 'Validation_Set': {}}
             
-            # 20%만 테스트로 사용
-            valid = random.sample(partition_dict.keys(), int(len(partition_dict.keys()) * 0.2))
-            train = [t for t in partition_dict.keys() if not t in valid]
+    #         # 20%만 테스트로 사용
+    #         valid = random.sample(partition_dict.keys(), int(len(partition_dict.keys()) * 0.2))
+    #         train = [t for t in partition_dict.keys() if not t in valid]
             
-            for trial_train in train:
-                new_partition_dict["Train_Set"].update({trial_train:partition_dict[trial_train]})
+    #         for trial_train in train:
+    #             new_partition_dict["Train_Set"].update({trial_train:partition_dict[trial_train]})
                 
-            for trial_valid in valid:
-                new_partition_dict["Validation_Set"].update({trial_valid:partition_dict[trial_valid]})
+    #         for trial_valid in valid:
+    #             new_partition_dict["Validation_Set"].update({trial_valid:partition_dict[trial_valid]})
                 
-            partition_dict = new_partition_dict
+    #         partition_dict = new_partition_dict
                 
-            return partition_dict            
-            
+    #         return partition_dict
+    
     
     def custom_sampled_list(self, sampled_list, partition, trial, length):
         start = 0
@@ -130,40 +131,60 @@ class ABAW2_VA_Arranger(object):
 
     def resample_according_to_window_and_hop_length(self, seed=0):
         partition_dict = self.dataset_info['partition']
+        with open("../data/Affwild2/seed_data.json", 'r') as f:    
+            seed_data = json.load(f)
+            
+        partition_dict['Train_Set'].update(partition_dict['Validation_Set'])
+        
+        # 의미는 없지만 뒤에 변수명으로 인해 헷갈려서 그냥 넣어둠
+        partition_dict['All_Data_Set'] = partition_dict['Train_Set']
 
+        all_pck_data = list(partition_dict['Train_Set'].keys())
+        all_pck_data = set(all_pck_data)
+        seed_data_train = set(seed_data[f'seed_{seed}']['Train_Set'])
+        seed_data_valid = set(seed_data[f'seed_{seed}']['Validation_Set'])
+        seed_data_test = set(seed_data[f'seed_{seed}']['Test_Set'])
+
+        train_pck_data = all_pck_data.difference(all_pck_data.difference(seed_data_train))
+        valid_pck_data = all_pck_data.difference(all_pck_data.difference(seed_data_valid))
+        test_pck_data = all_pck_data.difference(all_pck_data.difference(seed_data_test))
+        
+        # partition_dict = self.dataset_info['partition']
         # partition_dict = self.generate_partition_dict_for_cross_validation(partition_dict, fold)
         
         # train / test
-        partition_dict = self.split_train_test_trial(partition_dict, mode='Test', seed=seed)
-        partition_dict_test = partition_dict['Test_Set']
+        # partition_dict = self.split_train_test_trial(partition_dict, mode='Test', seed=seed)
+        # partition_dict_test = partition_dict['Test_Set']
         
-        # train / valid 
-        partition_dict = self.split_train_test_trial(partition_dict['Train_Set'], mode='Valid', seed=seed)
-        partition_dict['Test_Set'] = partition_dict_test
+        # # train / valid 
+        # partition_dict = self.split_train_test_trial(partition_dict['Train_Set'], mode='Valid', seed=seed)
+        # partition_dict['Test_Set'] = partition_dict_test
 
+        # sampled_list_dict = {'Train_Set': [], 'Validation_Set': [], 'Test_Set':[]}
+        
         sampled_list_dict = {'Train_Set': [], 'Validation_Set': [], 'Test_Set':[]}
-        for train_trials in partition_dict['Train_Set']:
+        for train_trials in list(train_pck_data):
             trial_count = 0
             partition = "Train_Set"
-            length = partition_dict['Train_Set'][train_trials]
+            length = partition_dict['All_Data_Set'][train_trials]
             self.custom_sampled_list(sampled_list_dict, partition, train_trials, length)
             trial_count += 1
             if self.debug and trial_count >= self.debug:
                 break
             
-        for valid_trials in partition_dict['Validation_Set']:
+        for valid_trials in list(valid_pck_data):
             trial_count = 0
             partition = "Validation_Set"
-            length = partition_dict['Validation_Set'][valid_trials]
+            length = partition_dict['All_Data_Set'][valid_trials]
             self.custom_sampled_list(sampled_list_dict, partition, valid_trials, length)
             trial_count += 1
             if self.debug and trial_count >= self.debug:
                 break
             
-        for test_trials in partition_dict['Test_Set']:
+        for test_trials in list(test_pck_data):
             trial_count = 0
             partition = "Test_Set"
-            length = partition_dict['Test_Set'][test_trials]
+            length = partition_dict['All_Data_Set'][test_trials]
             self.custom_sampled_list(sampled_list_dict, partition, test_trials, length)
             trial_count += 1
             if self.debug and trial_count >= self.debug:
