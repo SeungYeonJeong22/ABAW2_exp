@@ -256,7 +256,7 @@ class ABAW2_VA_Dataset(Dataset):
                     GroupCenterCrop(40),
                     Stack(),
                     ToTorchFormatTensor(),
-                    normalize
+                    normalize 
                 ])
 
         if "mfcc" in self.modality:
